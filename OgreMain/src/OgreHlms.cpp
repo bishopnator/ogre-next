@@ -2253,6 +2253,8 @@ namespace Ogre
 
                     if( mDebugOutputProperties )
                         dumpProperties( debugDumpFile );
+
+                    debugDumpFile.write(source[i].c_str(), source[i].size() );
                 }
 
                 codeCache.shaders[i] =

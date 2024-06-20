@@ -1,3 +1,6 @@
+#include "CustomHlms.h"
+#include "CustomHlmsDataBlock.h"
+
 #include "GraphicsGameState.h"
 #include "CameraController.h"
 #include "GraphicsSystem.h"
@@ -11,9 +14,6 @@
 
 #include "OgreCamera.h"
 #include "OgreWindow.h"
-
-//#include "OgreHlmsPbsDatablock.h"
-//#include "OgreHlmsSamplerblock.h"
 
 #include "OgreHlmsManager.h"
 #include "OgreHlmsPbs.h"
@@ -41,6 +41,10 @@ namespace Demo
     {
         Ogre::SceneManager *sceneManager = mGraphicsSystem->getSceneManager();
 
+        // Get CustomHlms.
+        CustomHlms* pCustomHlms = static_cast<CustomHlms*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER0));
+        assert(pCustomHlms != nullptr);
+
         const float armsLength = 2.5f;
 
         Ogre::v1::MeshPtr planeMeshV1 = Ogre::v1::MeshManager::getSingleton().createPlane(
@@ -62,6 +66,8 @@ namespace Demo
             sceneNode->attachObject( item );
         }
 
+        Ogre::HlmsDatablock* pDataBlock = pCustomHlms->createDatablock("test", "test", Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec());
+
         for( int i = 0; i < 4; ++i )
         {
             for( int j = 0; j < 4; ++j )
@@ -77,7 +83,9 @@ namespace Demo
                     meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
                     Ogre::SCENE_DYNAMIC );
                 
-                item->setDatablock( "White" );
+                // Set material from CustomHlms.
+                item->setDatablock(pDataBlock);
+
 //                 if( i % 2 == 0 )
 //                     item->setDatablock( "Rocks" );
 //                 else

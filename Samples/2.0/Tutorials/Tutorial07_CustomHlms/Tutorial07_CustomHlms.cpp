@@ -1,10 +1,12 @@
-
+#include "CustomHlms.h"
 #include "GraphicsSystem.h"
 #include "GraphicsGameState.h"
 
 #include "Compositor/OgreCompositorManager2.h"
+#include "OgreArchiveManager.h"
 #include "OgreCamera.h"
 #include "OgreConfigFile.h"
+#include "OgreHlmsManager.h"
 #include "OgreRoot.h"
 #include "OgreSceneManager.h"
 #include "OgreWindow.h"
@@ -21,7 +23,7 @@ INT WINAPI WinMainApp( HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR strCmdLin
 int mainApp( int argc, const char *argv[] )
 #    endif
 {
-    return Demo::MainEntryPoints::mainAppSingleThreaded( DEMO_MAIN_ENTRY_PARAMS );
+    return Demo::MainEntryPoints::mainAppSingleThreaded(DEMO_MAIN_ENTRY_PARAMS);
 }
 #endif
 
@@ -53,6 +55,14 @@ namespace Demo
             addResourceLocation( dataFolder, getMediaReadArchiveType(), "General" );
         }
 
+        void registerHlms() override
+        {
+            GraphicsSystem::registerHlms();
+
+            // Register CustomHlms to OGRE.
+            Ogre::registerHlms<CustomHlms>(mResourcePath, getMediaReadArchiveType());
+        }
+
     public:
         CustomHlmsGraphicsSystem( GameState *gameState ) : GraphicsSystem( gameState ) {}
     };
@@ -65,6 +75,8 @@ namespace Demo
             "Shows how to use the custom HLMS.\n"
             "\n"
             "This sample depends on the media files:\n"
+            "   * Samples/Media/Hlms/Common/*.*\n"
+            "   * Samples/Media/Hlms/CustomHlms/*.*\n"
             "   * Samples/Media/2.0/scripts/Compositors/CustomHlms.compositor\n"
         );
 
