@@ -9,7 +9,7 @@ using namespace Ogre;
 
 //////////////////////////////////////////////////////////////////////////
 HlmsReadOnlyBufferPool::HlmsReadOnlyBufferPool(size_t defaultBufferSize)
-: HlmsBufferPool(MapMode::eIndirect, defaultBufferSize)
+: HlmsBufferPool(MapMode::eSubRange, defaultBufferSize)
 {
 }
 

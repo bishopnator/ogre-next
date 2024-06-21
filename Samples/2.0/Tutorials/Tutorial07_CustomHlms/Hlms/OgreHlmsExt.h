@@ -68,7 +68,7 @@ namespace Ogre
 
 	private:
 		vector<HlmsBufferPool*>::type mBufferPools;
-		size_t mReadOnlyBufferPoolsCount = 0; ///< cached due to HlmsListener::hlmsTypeChanged
+		size_t mReadOnlyBufferPoolsCount; ///< cached due to HlmsListener::hlmsTypeChanged
 	};
 
 	/// Helper function to initialize DescBindingRange directly as it doesn't have a constructor accepting (start, end) and
@@ -96,17 +96,17 @@ namespace Ogre
 
 		if( rootHlmsFolder.empty() )
 			rootHlmsFolder = "./";
-        else if( *( rootHlmsFolder.end() - 1 ) != '/' )
+		else if( *( rootHlmsFolder.end() - 1 ) != '/' )
 			rootHlmsFolder += "/";
 
 		// At this point rootHlmsFolder should be a valid path to the Hlms data folder.
-        // For retrieval of the paths to the different folders needed.
-        Ogre::String mainFolderPath;
-        Ogre::StringVector libraryFoldersPaths;
-        Ogre::StringVector::const_iterator libraryFolderPathIt;
-        Ogre::StringVector::const_iterator libraryFolderPathEn;
+		// For retrieval of the paths to the different folders needed.
+		String mainFolderPath;
+		StringVector libraryFoldersPaths;
+		StringVector::const_iterator libraryFolderPathIt;
+		StringVector::const_iterator libraryFolderPathEn;
 
-        Ogre::ArchiveManager& archiveManager = Ogre::ArchiveManager::getSingleton();
+		ArchiveManager& archiveManager = ArchiveManager::getSingleton();
 
 		// Create & Register HlmsT
 		// Get the path to all the subdirectories used by HlmsT

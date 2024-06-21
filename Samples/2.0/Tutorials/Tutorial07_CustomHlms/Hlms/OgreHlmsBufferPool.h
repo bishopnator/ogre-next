@@ -6,22 +6,25 @@
 
 namespace Ogre
 {
-	/// Buffer pool for providing access to the buffers needed for binding to the shaders. A buffer pool can fill data in 2 mapping modes: direct and indirect.
-	/// The direct map mode means that MapBuffer method always takes a new buffer and data are filled from the beginning.
-	/// The indirect map mode fills that until the buffer is full and only then takes new buffer.
+	/// Buffer pool for providing access to the buffers needed for binding to the shaders. A buffer pool can fill data in 2 mapping modes: bulk and sub-range.
+	///
+	/// The bulk map mode means that mapBuffer method always takes a new buffer and data are filled from the beginning. It is suitable for the buffers with smaller
+	///    capacities like ConstBufferPacked.
 	/// 
-	/// The advantage of indirect map mode is that the same buffer is reused by multiple shaders, only new binding offsets are provided. It is suitable for buffers
-	/// with higher capacity like ReadOnlyBufferPacked. The direct map mode is suitable for smaller buffers like ConstBufferPacked.
+	/// The sub-range map mode means that mapBuffer just inserts a command to CommandBuffer with the offset where last write ended. The command is updated when
+	///    new mapBuffer is called which means that the size of written data is known. This mode allows to reuse same buffer which can be optimized by the GPU
+	///    drivers as updating just the offset/size of already bound buffer is faster than binding new buffer completely. It is suitable for buffers with larger
+	///    capacities like ReadOnlyBufferPacked.
 	class _OgreComponentExport HlmsBufferPool : public OgreAllocatedObj
 	{
 	public:
 		/// Mapping mode. The buffer can work in 2 different modes:
-		///  direct mapping mode:   The buffer is bound to the shaders completely - from 0 to its whole capacity.
-		///  indirect mapping mode: Only the part of the buffer can be bound to the shaders.
+		///  bulk mapping mode:      The buffer is bound to the shaders completely - from 0 to its whole capacity.
+		///  sub-range mapping mode: Only the part of the buffer can be bound to the shaders.
 		enum class MapMode : uint8_t
 		{
-			eDirect = 0,	///< Allows to map always from the beginning of the buffer and shaders have access to whole buffer.
-			eIndirect		///< Allows to map in the middle of the buffer and shaders don't necessarily have access to the whole buffer.
+			eBulk = 0,		///< Allows to map always from the beginning of the buffer and shaders have access to the whole buffer.
+			eSubRange		///< Allows to map in the middle of the buffer and shaders don't necessarily have access to the whole buffer.
 		};
 
 	public:
@@ -33,6 +36,7 @@ namespace Ogre
 		/// Set binding for the buffers in the shaders.
 		/// @param stages	Combination of ShaderType values.
 		/// @param slot		Slot index to which the buffers will be bound.
+		/// @throw Exception if a buffer is currently mapped.
 		void setBinding(uint8_t stages, uint16_t slot);
 
 		/// Bind the buffers to the shaders.
@@ -56,6 +60,7 @@ namespace Ogre
 		void unmapBuffer(CommandBuffer* pCommandBuffer);
 
 		/// Write data to the buffer - must be mapped by previous call MapNextBuffer.
+        /// @throw Exception if a buffer is not mapped or if there is not enough space for the numBytes.
 		void writeData(const void* pData, size_t numBytes);
 
 		/// Check whether there is enough space in the currently mapped range to write give size of data.
@@ -83,22 +88,22 @@ namespace Ogre
 	private:
 		void updateShaderBufferCommand(CommandBuffer* pCommandBuffer);
 
-		/// Implementation of MapMode::eDirect
-		void mapBufferDirect(CommandBuffer* pCommandBuffer, size_t minimumSizeBytes);
-		void unmapBufferDirect();
+		/// Implementation of MapMode::eBulk
+		void mapBufferBulk(CommandBuffer* pCommandBuffer, size_t minimumSizeBytes);
+		void unmapBufferBulk();
 
 		/// Implementation of MapMode::eIndirect
-		void mapBufferIndirect(CommandBuffer* pCommandBuffer, size_t minimumSizeBytes);
-		void mapNextBufferIndirect(CommandBuffer* pCommandBuffer, size_t minimumSizeBytes);
-		void unmapBufferIndirect(CommandBuffer* pCommandBuffer);
+		void mapBufferSubRange(CommandBuffer* pCommandBuffer, size_t minimumSizeBytes);
+		void mapNextBufferSubRange(CommandBuffer* pCommandBuffer, size_t minimumSizeBytes);
+		void unmapBufferSubRange(CommandBuffer* pCommandBuffer);
 
 	protected:
 		/// VertexArrayObject manager which is used for creating/destroying the buffers.
-		VaoManager* mVaoManager = nullptr;
+		VaoManager* mVaoManager;
 
 		/// Binding of the buffer.
-		uint8_t mStages = 0;
-		uint16_t mSlot = 0;
+		uint8_t mStages;
+		uint16_t mSlot;
 
 	private:
 		/// Mapping mode for the buffer. Set through the constructor and cannot be changed later.
@@ -108,19 +113,19 @@ namespace Ogre
 		const size_t mDefaultBufferSize;
 		size_t mBufferSize;
 
-		uint8_t* mStartPtr = nullptr; ///< Start of the writing to the buffer.
-		uint8_t* mCurrentPtr = nullptr; ///< Current offset where next data can be written (m_pStartOffset <= m_pCurrentOffset). Number of written bytes = m_pCurrent - m_pStart
-		size_t mCapacity = 0; ///< Number of bytes allowed to write to the buffer at m_pStart.
+		uint8_t* mStartPtr; ///< Start of the writing to the buffer.
+		uint8_t* mCurrentPtr; ///< Current offset where next data can be written (m_pStartOffset <= m_pCurrentOffset). Number of written bytes = m_pCurrent - m_pStart
+		size_t mCapacity; ///< Number of bytes allowed to write to the buffer at m_pStart.
 
-		uint8_t* mMappedPtr = nullptr; ///< Pointer returned by BufferPacked::map call.
-		size_t mMappedOffset = 0; ///< Offset from the beginning of the buffer where the buffer was mapped.
+		uint8_t* mMappedPtr; ///< Pointer returned by BufferPacked::map call.
+		size_t mMappedOffset; ///< Offset from the beginning of the buffer where the buffer was mapped.
 
-		size_t mCurrentIndex = 0; ///< Resets to zero every new frame. Index to m_Buffers which buffer is currently used for writing.
+		size_t mCurrentIndex; ///< Resets to zero every new frame. Index to m_Buffers which buffer is currently used for writing.
 		vector<BufferPacked*>::type mBuffers; ///< Buffer pool.
 
 		/// Offset in CommandBuffer where CbShaderBuffer was created. If written data size is not known at the beginning of mapping of
 		/// the buffer, the command offset of the CbShaderBuffer in CommandBuffer is saved, and later when new mapping is requested,
 		/// the written data size is updated in that CbShaderBuffer.
-		size_t mShaderBufferCommandOffset = (size_t)~0;
+		size_t mShaderBufferCommandOffset;
 	};
 } // namespace Ogre

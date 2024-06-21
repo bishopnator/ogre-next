@@ -9,7 +9,7 @@ using namespace Ogre;
 
 //////////////////////////////////////////////////////////////////////////
 HlmsConstBufferPool::HlmsConstBufferPool(size_t defaultBufferSize)
-: HlmsBufferPool(MapMode::eDirect, defaultBufferSize)
+: HlmsBufferPool(MapMode::eBulk, defaultBufferSize)
 {
 }
 

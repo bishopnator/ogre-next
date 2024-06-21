@@ -12,6 +12,7 @@ using namespace Ogre;
 //////////////////////////////////////////////////////////////////////////
 HlmsExt::HlmsExt(HlmsTypes type, const String& typeName, Archive* pDataFolder, ArchiveVec* pLibraryFolders)
 : Hlms(type, typeName, pDataFolder, pLibraryFolders)
+, mReadOnlyBufferPoolsCount(0)
 {
 }
 

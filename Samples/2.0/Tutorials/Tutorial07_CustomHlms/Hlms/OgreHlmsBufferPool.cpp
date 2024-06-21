@@ -26,12 +26,26 @@ namespace
 
 	//////////////////////////////////////////////////////////////////////////
 	const size_t cCommandFixedSize = getCommandSize();
+
+	//////////////////////////////////////////////////////////////////////////
+	constexpr size_t cInvalidCommandOffset = (size_t)~0;
 }
 
 //////////////////////////////////////////////////////////////////////////
 HlmsBufferPool::HlmsBufferPool(MapMode mapMode, size_t defaultBufferSize)
-: mMapMode(mapMode)
+: mVaoManager(nullptr)
+, mStages(0)
+, mSlot(0)
+, mMapMode(mapMode)
 , mDefaultBufferSize(defaultBufferSize)
+, mBufferSize(0)
+, mStartPtr(nullptr)
+, mCurrentPtr(nullptr)
+, mCapacity(0)
+, mMappedPtr(0)
+, mMappedOffset(0)
+, mCurrentIndex(0)
+, mShaderBufferCommandOffset(cInvalidCommandOffset)
 {
 }
 
@@ -105,32 +119,32 @@ void HlmsBufferPool::destroyAllBuffers()
 	mMappedPtr = nullptr;
 	mMappedOffset = 0;
 	mCurrentIndex = 0;
-	mShaderBufferCommandOffset = (size_t)~0;
+	mShaderBufferCommandOffset = cInvalidCommandOffset;
 }
 
 //////////////////////////////////////////////////////////////////////////
 void HlmsBufferPool::mapBuffer(CommandBuffer* pCommandBuffer, size_t minimumSizeBytes)
 {
-	if (mMapMode == MapMode::eDirect)
-		mapBufferDirect(pCommandBuffer, minimumSizeBytes);
+	if (mMapMode == MapMode::eBulk)
+		mapBufferBulk(pCommandBuffer, minimumSizeBytes);
 	else
-		mapBufferIndirect(pCommandBuffer, minimumSizeBytes);
+		mapBufferSubRange(pCommandBuffer, minimumSizeBytes);
 }
 
 //////////////////////////////////////////////////////////////////////////
 void HlmsBufferPool::unmapBuffer(CommandBuffer* pCommandBuffer)
 {
-	if (mMapMode == MapMode::eDirect)
-		unmapBufferDirect();
+	if (mMapMode == MapMode::eBulk)
+		unmapBufferBulk();
 	else
-		unmapBufferIndirect(pCommandBuffer);
+		unmapBufferSubRange(pCommandBuffer);
 }
 
 //////////////////////////////////////////////////////////////////////////
-void HlmsBufferPool::mapBufferDirect(CommandBuffer* pCommandBuffer, size_t /*minimumSizeBytes*/)
+void HlmsBufferPool::mapBufferBulk(CommandBuffer* pCommandBuffer, size_t /*minimumSizeBytes*/)
 {
 	// Ensure that currently mapped const buffer is not mapped anymore.
-	unmapBufferDirect();
+	unmapBufferBulk();
 
 	if (mStages == 0)
 		OGRE_EXCEPT(Exception::ERR_INVALID_STATE, "SetBinding was not called.", "HlmsBufferPool::MapNextBuffer");
@@ -153,7 +167,7 @@ void HlmsBufferPool::mapBufferDirect(CommandBuffer* pCommandBuffer, size_t /*min
 }
 
 //////////////////////////////////////////////////////////////////////////
-void HlmsBufferPool::unmapBufferDirect()
+void HlmsBufferPool::unmapBufferBulk()
 {
 	if (mStartPtr != nullptr)
 	{
@@ -173,7 +187,7 @@ void HlmsBufferPool::unmapBufferDirect()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void HlmsBufferPool::mapBufferIndirect(CommandBuffer* pCommandBuffer, size_t minimumSizeBytes)
+void HlmsBufferPool::mapBufferSubRange(CommandBuffer* pCommandBuffer, size_t minimumSizeBytes)
 {
 	updateShaderBufferCommand(pCommandBuffer);
 
@@ -183,7 +197,7 @@ void HlmsBufferPool::mapBufferIndirect(CommandBuffer* pCommandBuffer, size_t min
 	const size_t remainingSize = mCapacity - currentOffset;
 	if (remainingSize < minimumSizeBytes)
 	{
-		mapNextBufferIndirect(pCommandBuffer, minimumSizeBytes);
+		mapNextBufferSubRange(pCommandBuffer, minimumSizeBytes);
 	}
 	else
 	{
@@ -196,7 +210,7 @@ void HlmsBufferPool::mapBufferIndirect(CommandBuffer* pCommandBuffer, size_t min
 
 		if (mMappedOffset + bindOffset >= mBuffers[mCurrentIndex]->getTotalSizeBytes())
 		{
-			mapNextBufferIndirect(pCommandBuffer, minimumSizeBytes);
+			mapNextBufferSubRange(pCommandBuffer, minimumSizeBytes);
 		}
 		else
 		{
@@ -207,9 +221,9 @@ void HlmsBufferPool::mapBufferIndirect(CommandBuffer* pCommandBuffer, size_t min
 }
 
 //////////////////////////////////////////////////////////////////////////
-void HlmsBufferPool::mapNextBufferIndirect(CommandBuffer* pCommandBuffer, size_t minimumSizeBytes)
+void HlmsBufferPool::mapNextBufferSubRange(CommandBuffer* pCommandBuffer, size_t minimumSizeBytes)
 {
-	unmapBufferIndirect(pCommandBuffer);
+	unmapBufferSubRange(pCommandBuffer);
 
 	auto* pBuffer = mCurrentIndex < mBuffers.size() ? mBuffers[mCurrentIndex] : nullptr;
 	auto bufferSize = pBuffer != nullptr ? pBuffer->getTotalSizeBytes() : 0;
@@ -241,7 +255,7 @@ void HlmsBufferPool::mapNextBufferIndirect(CommandBuffer* pCommandBuffer, size_t
 }
 
 //////////////////////////////////////////////////////////////////////////
-void HlmsBufferPool::unmapBufferIndirect(CommandBuffer* pCommandBuffer)
+void HlmsBufferPool::unmapBufferSubRange(CommandBuffer* pCommandBuffer)
 {
 	// Save our progress.
 	const size_t bytesWritten = (mCurrentPtr - mMappedPtr) * sizeof(uint8_t);
@@ -297,7 +311,7 @@ void HlmsBufferPool::preCommandBufferExecution(CommandBuffer* pCommandBuffer)
 {
 	unmapBuffer(pCommandBuffer);
 
-	if (mMapMode == MapMode::eIndirect)
+	if (mMapMode == MapMode::eSubRange)
 	{
 		for (auto* pBuffer : mBuffers)
 			pBuffer->advanceFrame();
@@ -307,7 +321,7 @@ void HlmsBufferPool::preCommandBufferExecution(CommandBuffer* pCommandBuffer)
 //////////////////////////////////////////////////////////////////////////
 void HlmsBufferPool::postCommandBufferExecution(CommandBuffer* pCommandBuffer)
 {
-	if (mMapMode == MapMode::eIndirect)
+	if (mMapMode == MapMode::eSubRange)
 	{
 		for (auto* pBuffer : mBuffers)
 			pBuffer->regressFrame();
@@ -320,7 +334,7 @@ void HlmsBufferPool::frameEnded()
 	mCurrentIndex = 0;
 	mMappedOffset = 0;
 
-	if (mMapMode == MapMode::eIndirect)
+	if (mMapMode == MapMode::eSubRange)
 	{
 		for (auto* pBuffer : mBuffers)
 			pBuffer->advanceFrame();
@@ -330,7 +344,7 @@ void HlmsBufferPool::frameEnded()
 //////////////////////////////////////////////////////////////////////////
 void HlmsBufferPool::updateShaderBufferCommand(CommandBuffer* pCommandBuffer)
 {
-	if (mShaderBufferCommandOffset != (size_t)~0)
+	if (mShaderBufferCommandOffset != cInvalidCommandOffset)
 	{
 		static_assert(NumShaderTypes == 5, "ShaderType enum has been changed! Update the implementation.");
 		constexpr std::array<uint8_t, 32> cNumBits = {
@@ -384,6 +398,6 @@ void HlmsBufferPool::updateShaderBufferCommand(CommandBuffer* pCommandBuffer)
 			}
 		}
 
-		mShaderBufferCommandOffset = (size_t)~0;
+		mShaderBufferCommandOffset = cInvalidCommandOffset;
 	}
 }
