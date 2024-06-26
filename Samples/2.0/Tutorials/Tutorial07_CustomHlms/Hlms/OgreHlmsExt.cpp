@@ -3,9 +3,11 @@
 #include "OgreHlmsReadOnlyBufferPool.h"
 
 // OGRE
+#include <OgreCamera.h>
 #include <OgreHlmsListener.h>
 #include <OgreRenderable.h>
 #include <OgreRenderQueue.h>
+#include <OgreSceneManager.h>
 
 using namespace Ogre;
 
@@ -13,6 +15,7 @@ using namespace Ogre;
 HlmsExt::HlmsExt(HlmsTypes type, const String& typeName, Archive* pDataFolder, ArchiveVec* pLibraryFolders)
 : Hlms(type, typeName, pDataFolder, pLibraryFolders)
 , mReadOnlyBufferPoolsCount(0)
+, mConstantBiasScale(0.1f)
 {
 }
 
@@ -89,6 +92,15 @@ void HlmsExt::frameEnded(void)
 		pBufferPool->frameEnded();
 
 	Hlms::frameEnded();
+}
+
+//////////////////////////////////////////////////////////////////////////
+Ogre::HlmsCache HlmsExt::preparePassHash(const CompositorShadowNode* pShadowNode, bool casterPass, bool dualParaboloid, SceneManager* pSceneManager)
+{
+	CamerasInProgress cameras = pSceneManager->getCamerasInProgress();
+	mConstantBiasScale = cameras.renderingCamera != nullptr ? cameras.renderingCamera->_getConstantBiasScale() : 0.1f;
+
+	return Hlms::preparePassHash(pShadowNode, casterPass, dualParaboloid, pSceneManager);
 }
 
 //////////////////////////////////////////////////////////////////////////
