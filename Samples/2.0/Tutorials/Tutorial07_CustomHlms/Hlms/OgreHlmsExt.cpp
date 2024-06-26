@@ -4,6 +4,7 @@
 
 // OGRE
 #include <OgreCamera.h>
+#include <OgreHlmsDatablock.h>
 #include <OgreHlmsListener.h>
 #include <OgreRenderable.h>
 #include <OgreRenderQueue.h>
@@ -22,7 +23,7 @@ HlmsExt::HlmsExt(HlmsTypes type, const String& typeName, Archive* pDataFolder, A
 //////////////////////////////////////////////////////////////////////////
 HlmsExt::~HlmsExt()
 {
-	for (auto* pBufferPool : mBufferPools)
+	for (HlmsBufferPool* pBufferPool : mBufferPools)
 		OGRE_DELETE pBufferPool;
 }
 
@@ -32,7 +33,7 @@ HlmsBufferPool& HlmsExt::createConstBufferPool(const std::initializer_list<Shade
 	mBufferPools.push_back(OGRE_NEW HlmsConstBufferPool(bufferSize));
 
 	uint8_t _stages = 0;
-	for (const auto& shaderType : stages)
+	for (const ShaderType& shaderType : stages)
 		_stages |= 1 << shaderType;
 
 	if (_stages == 0)
@@ -48,7 +49,7 @@ HlmsBufferPool& HlmsExt::createReadOnlyBufferPool(const std::initializer_list<Sh
 	mBufferPools.push_back(OGRE_NEW HlmsReadOnlyBufferPool(bufferSize));
 
 	uint8_t _stages = 0;
-	for (const auto& shaderType : stages)
+	for (const ShaderType& shaderType : stages)
 		_stages |= 1 << shaderType;
 
 	if (_stages == 0)
@@ -61,16 +62,17 @@ HlmsBufferPool& HlmsExt::createReadOnlyBufferPool(const std::initializer_list<Sh
 //////////////////////////////////////////////////////////////////////////
 void HlmsExt::_changeRenderSystem(RenderSystem* pNewRenderSystem)
 {
-	for (auto* pBufferPool : mBufferPools)
+	for (HlmsBufferPool* pBufferPool : mBufferPools)
 		pBufferPool->setRenderSystem(pNewRenderSystem);
 
+	mMaterialBufferPool._changeRenderSystem(pNewRenderSystem);
 	Hlms::_changeRenderSystem(pNewRenderSystem);
 }
 
 //////////////////////////////////////////////////////////////////////////
 void HlmsExt::preCommandBufferExecution(CommandBuffer* pCommandBuffer)
 {
-	for (auto* pBufferPool : mBufferPools)
+	for (HlmsBufferPool* pBufferPool : mBufferPools)
 		pBufferPool->preCommandBufferExecution(pCommandBuffer);
 
 	Hlms::preCommandBufferExecution(pCommandBuffer);
@@ -79,7 +81,7 @@ void HlmsExt::preCommandBufferExecution(CommandBuffer* pCommandBuffer)
 //////////////////////////////////////////////////////////////////////////
 void HlmsExt::postCommandBufferExecution(CommandBuffer* pCommandBuffer)
 {
-	for (auto* pBufferPool : mBufferPools)
+	for (HlmsBufferPool* pBufferPool : mBufferPools)
 		pBufferPool->postCommandBufferExecution(pCommandBuffer);
 
 	Hlms::postCommandBufferExecution(pCommandBuffer);
@@ -88,7 +90,7 @@ void HlmsExt::postCommandBufferExecution(CommandBuffer* pCommandBuffer)
 //////////////////////////////////////////////////////////////////////////
 void HlmsExt::frameEnded(void)
 {
-	for (auto* pBufferPool : mBufferPools)
+	for (HlmsBufferPool* pBufferPool : mBufferPools)
 		pBufferPool->frameEnded();
 
 	Hlms::frameEnded();
@@ -117,8 +119,17 @@ uint32 HlmsExt::fillBuffersForV1(const HlmsCache* pCache, const QueuedRenderable
 {
 	if (OGRE_EXTRACT_HLMS_TYPE_FROM_CACHE_HASH(lastCacheHash) != static_cast<uint32_t>(mType))
 	{
-		const auto texUnit = onHlmsTypeChanged(casterPass, pCommandBuffer, queuedRenderable);
+		const size_t texUnit = onHlmsTypeChanged(casterPass, pCommandBuffer, queuedRenderable);
 		mListener->hlmsTypeChanged(casterPass, pCommandBuffer, queuedRenderable.renderable->getDatablock(), texUnit);
+	}
+
+	// Don't bind the material buffer on caster passes (important to keep MDI & auto-instancing running on shadow map passes).
+	auto* pDatablock = queuedRenderable.renderable->getDatablock();
+	if (!casterPass || pDatablock->getAlphaTest() != CMPF_ALWAYS_PASS)
+	{
+		const ConstBufferPoolUser* pBufferPoolUser = dynamic_cast<const ConstBufferPoolUser*>(pDatablock);
+		if (pBufferPoolUser != nullptr && pBufferPoolUser->getAssignedPool() != nullptr)
+			mMaterialBufferPool.bindBuffers(*pBufferPoolUser->getAssignedPool(), *pCommandBuffer);
 	}
 
 	return fillBuffersForV1(pCache, queuedRenderable, casterPass, pCommandBuffer);
@@ -129,8 +140,17 @@ uint32 HlmsExt::fillBuffersForV2(const HlmsCache* pCache, const QueuedRenderable
 {
 	if (OGRE_EXTRACT_HLMS_TYPE_FROM_CACHE_HASH(lastCacheHash) != static_cast<uint32_t>(mType))
 	{
-		const auto texUnit = onHlmsTypeChanged(casterPass, pCommandBuffer, queuedRenderable);
+		const size_t texUnit = onHlmsTypeChanged(casterPass, pCommandBuffer, queuedRenderable);
 		mListener->hlmsTypeChanged(casterPass, pCommandBuffer, queuedRenderable.renderable->getDatablock(), texUnit);
+	}
+
+	// Don't bind the material buffer on caster passes (important to keep MDI & auto-instancing running on shadow map passes).
+	auto* pDatablock = queuedRenderable.renderable->getDatablock();
+	if (!casterPass || pDatablock->getAlphaTest() != CMPF_ALWAYS_PASS)
+	{
+		const ConstBufferPoolUser* pBufferPoolUser = dynamic_cast<const ConstBufferPoolUser*>(pDatablock);
+		if (pBufferPoolUser != nullptr && pBufferPoolUser->getAssignedPool() != nullptr)
+			mMaterialBufferPool.bindBuffers(*pBufferPoolUser->getAssignedPool(), *pCommandBuffer);
 	}
 
 	return fillBuffersForV2(pCache, queuedRenderable, casterPass, pCommandBuffer);
@@ -146,8 +166,10 @@ void HlmsExt::setupRootLayout(RootLayout& rootLayout)
 //////////////////////////////////////////////////////////////////////////
 size_t HlmsExt::onHlmsTypeChanged(bool /*casterPass*/, CommandBuffer* pCommandBuffer, const QueuedRenderable& /*queuedRenderable*/)
 {
-	for (auto* pBufferPool : mBufferPools)
+	for (HlmsBufferPool* pBufferPool : mBufferPools)
 		pBufferPool->bindBuffer(pCommandBuffer);
+
+	mMaterialBufferPool.onHlmsTypeChanged();
 
 	return mReadOnlyBufferPoolsCount;
 }

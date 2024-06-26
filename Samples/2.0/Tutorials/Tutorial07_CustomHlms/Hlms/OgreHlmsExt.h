@@ -1,5 +1,5 @@
 #pragma once
-#include "OgreComponentExport.h"
+#include "OgreHlmsMaterialBufferPool.h"
 
 // OGRE
 #include <OgreHlms.h>
@@ -71,7 +71,13 @@ namespace Ogre
         float mConstantBiasScale;
 
 	private:
+		/// Buffer pool to store the properties from datablocks. It is used only if requested by implementation. It is necessary that
+		/// the implementation creates datablocks inherited from ConstBufferPoolUser.
+		HlmsMaterialBufferPool mMaterialBufferPool;
+
+		/// Buffer pools used by shaders to store additional data to render the objects.
 		vector<HlmsBufferPool*>::type mBufferPools;
+
 		size_t mReadOnlyBufferPoolsCount; ///< cached due to HlmsListener::hlmsTypeChanged
 	};
 
