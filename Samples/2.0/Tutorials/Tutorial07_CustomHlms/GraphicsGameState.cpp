@@ -21,6 +21,9 @@
 #include "OgreTextureFilters.h"
 #include "OgreTextureGpuManager.h"
 
+#include "OgreHlmsUnlit.h"
+#include "OgreHlmsUnlitDatablock.h"
+
 using namespace Demo;
 
 extern const double cFrametime;
@@ -45,6 +48,9 @@ namespace Demo
         CustomHlms* pCustomHlms = static_cast<CustomHlms*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER0));
         assert(pCustomHlms != nullptr);
 
+        auto* pHlmsUnlit = dynamic_cast<Ogre::HlmsUnlit*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_UNLIT));
+        assert(pHlmsUnlit != nullptr);
+
         const float armsLength = 2.5f;
 
         Ogre::v1::MeshPtr planeMeshV1 = Ogre::v1::MeshManager::getSingleton().createPlane(
@@ -66,7 +72,10 @@ namespace Demo
             sceneNode->attachObject( item );
         }
 
-        Ogre::HlmsDatablock* pDataBlock = pCustomHlms->createDatablock("test", "test", Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec());
+        //auto* pDataBlock = static_cast<Ogre::HlmsUnlitDatablock*>(pHlmsUnlit->createDatablock("test", "test", Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
+        //pDataBlock->setUseColour(true);
+        //pDataBlock->setColour(Ogre::ColourValue(0, 0.25, 1));
+        auto* pDataBlock = static_cast<CustomHlmsDataBlock*>(pCustomHlms->createDatablock("test", "test", Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
 
         for( int i = 0; i < 4; ++i )
         {
@@ -85,6 +94,7 @@ namespace Demo
                 
                 // Set material from CustomHlms.
                 item->setDatablock(pDataBlock);
+                //item->setCastShadows(false);
 
 //                 if( i % 2 == 0 )
 //                     item->setDatablock( "Rocks" );
@@ -125,7 +135,7 @@ namespace Demo
 
             Ogre::Root *root = mGraphicsSystem->getRoot();
             Ogre::TextureGpuManager *textureMgr = root->getRenderSystem()->getTextureGpuManager();
-
+            /*
             for( int x = 0; x < numX; ++x )
             {
                 for( int z = 0; z < numZ; ++z )
@@ -165,6 +175,7 @@ namespace Demo
                     sceneNode->attachObject( item );
                 }
             }
+            */
         }
 
         Ogre::SceneNode *rootNode = sceneManager->getRootSceneNode();

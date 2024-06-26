@@ -10,6 +10,7 @@
 #include <OgreRenderQueue.h>
 #include <OgreRoot.h>
 #include <OgreRenderSystem.h>
+#include <Compositor/OgreCompositorShadowNode.h>
 
 // std
 #include <array>
@@ -23,8 +24,9 @@ CustomHlms::CustomHlms(Ogre::Archive* pDataFolder, Ogre::ArchiveVec* pLibraryFol
 	mPassBufferPool = &createConstBufferPool({ Ogre::VertexShader }, 0, sizeof(PassBuffer));
 
 	// max. space for 4096 instances
-	mMaterialIndicesBufferPool = &createConstBufferPool({ Ogre::PixelShader }, 1, 4096 * sizeof(uint32_t) * 4); // buffer in shader is mapped to uint4[]
-	mWorldMatricesBufferPool = &createReadOnlyBufferPool({ Ogre::VertexShader }, 0, 4096 * sizeof(Ogre::Matrix4));
+	constexpr size_t cMaxNumInstances = 4096;
+	mInstanceBuffer = &createConstBufferPool({ Ogre::VertexShader}, 1, cMaxNumInstances * sizeof(Ogre::Vector4));
+	mWorldMatricesBufferPool = &createReadOnlyBufferPool({ Ogre::VertexShader }, 0, cMaxNumInstances * sizeof(Ogre::Matrix4));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -47,6 +49,7 @@ void CustomHlms::getDefaultPaths(Ogre::String& outDataFolderPath, Ogre::StringVe
 	// Fill the library folder paths with the relevant folders.
 	outLibraryFoldersPaths.clear();
     outLibraryFoldersPaths.push_back( "Hlms/Common/" + shaderSyntax );
+    outLibraryFoldersPaths.push_back( "Hlms/Common/Any" );
 
 	// Fill the data folder path
 	outDataFolderPath = "Hlms/CustomHlms/" + shaderSyntax;
@@ -55,15 +58,12 @@ void CustomHlms::getDefaultPaths(Ogre::String& outDataFolderPath, Ogre::StringVe
 //////////////////////////////////////////////////////////////////////////
 Ogre::HlmsCache CustomHlms::preparePassHash(const Ogre::CompositorShadowNode* pShadowNode, bool casterPass, bool dualParaboloid, Ogre::SceneManager* pSceneManager)
 {
-	OgreProfileExhaustive("GpuMaterialManager::preparePassHash");
-	mSetProperties.clear();
+	OgreProfileExhaustive("CustomHlms::preparePassHash");
+	Ogre::HlmsCache retVal = Ogre::HlmsExt::preparePassHash(pShadowNode, casterPass, dualParaboloid, pSceneManager);
 
-	Ogre::HlmsCache retVal = Ogre::HlmsExt::preparePassHashBase(pShadowNode, casterPass, dualParaboloid, pSceneManager);
-	retVal.setProperties = mSetProperties;
-
-	// fill matrices to pass buffer
+	// fill matrices to the pass buffer
 	Ogre::CamerasInProgress cameras = pSceneManager->getCamerasInProgress();
-	Ogre::Matrix4 viewMatrix = cameras.renderingCamera->getVrViewMatrix(0);
+Ogre::Matrix4 viewMatrix = cameras.renderingCamera->getViewMatrix(true);
 
 	Ogre::Matrix4 projectionMatrix = cameras.renderingCamera->getProjectionMatrixWithRSDepth();
 	Ogre::RenderPassDescriptor* pRenderPassDesc = mRenderSystem->getCurrentPassDescriptor();
@@ -80,9 +80,18 @@ Ogre::HlmsCache CustomHlms::preparePassHash(const Ogre::CompositorShadowNode* pS
 	mPassBufferPool->mapBuffer(nullptr);
 
 	// Fill pass buffer.
-	PassBuffer passBuffer;
-	passBuffer.m_ViewProjMatrix = projectionMatrix * viewMatrix;
-	mPassBufferPool->writeData(&passBuffer, sizeof(PassBuffer));
+	PassBuffer* pPassBuffer = mPassBufferPool->insertValue<PassBuffer>();
+	if (casterPass && pShadowNode != nullptr)
+	{
+		Ogre::Real fNear, fFar;
+		pShadowNode->getMinMaxDepthRange(cameras.renderingCamera, fNear, fFar);
+		const Ogre::Real depthRange = fFar - fNear;
+		pPassBuffer->mDepthRange.x = fNear;
+		pPassBuffer->mDepthRange.y = 1.0f / depthRange;
+		pPassBuffer->mDepthRange.z = 0.0;
+		pPassBuffer->mDepthRange.w = 0.0;
+	}
+	pPassBuffer->mViewProjMatrix = projectionMatrix * viewMatrix;
 
 	// Pass buffer is filled - it is possible to unmap it now.
 	mPassBufferPool->unmapBuffer(nullptr);
@@ -97,31 +106,36 @@ Ogre::uint32 CustomHlms::fillBuffersForV1(const Ogre::HlmsCache* /*pCache*/, con
 }
 
 //////////////////////////////////////////////////////////////////////////
-Ogre::uint32 CustomHlms::fillBuffersForV2(const Ogre::HlmsCache* /*pCache*/, const Ogre::QueuedRenderable& queuedRenderable, bool /*casterPass*/, Ogre::CommandBuffer* pCommandBuffer)
+Ogre::uint32 CustomHlms::fillBuffersForV2(const Ogre::HlmsCache* pCache, const Ogre::QueuedRenderable& queuedRenderable, bool casterPass, Ogre::CommandBuffer* pCommandBuffer)
 {
+	assert(dynamic_cast<const CustomHlmsDataBlock*>(queuedRenderable.renderable->getDatablock()) != nullptr);
+    const CustomHlmsDataBlock* pDatablock = static_cast<const CustomHlmsDataBlock*>(queuedRenderable.renderable->getDatablock());
+
 	// Check if there is enough space for the new instance.
-	if (!mWorldMatricesBufferPool->canWrite(sizeof(Ogre::Matrix4)) || !mMaterialIndicesBufferPool->canWrite(sizeof(uint32_t) * 4))
+	if (!mWorldMatricesBufferPool->canWrite(sizeof(Ogre::Matrix4)) || !mInstanceBuffer->canWrite(sizeof(Ogre::Vector4)))
 	{
 		mWorldMatricesBufferPool->mapBuffer(pCommandBuffer, sizeof(Ogre::Matrix4));
-		mMaterialIndicesBufferPool->mapBuffer(pCommandBuffer, sizeof(uint32_t) * 4);
+		mInstanceBuffer->mapBuffer(pCommandBuffer, sizeof(Ogre::Vector4));
 	}
 
-	// write the data.
+	// Write a world transformation for the renderable.
 	static_assert(sizeof(Ogre::Matrix4) == sizeof(float) * 16, "Ogre::Matrix4 has not expected size!");
 	const Ogre::Matrix4& worldMat = queuedRenderable.movableObject->_getParentNodeFullTransform();
 	mWorldMatricesBufferPool->writeData(&worldMat, sizeof(Ogre::Matrix4));
 
-	std::array<uint32_t, 4> materialIndex{0, 0, 0, 0};
-	mMaterialIndicesBufferPool->writeData(materialIndex.data(), sizeof(uint32_t) * 4);
+	// Write instance data.
+	static_assert(sizeof(Ogre::Vector4) == sizeof(float) * 4, "Ogre::Vector4 has not expected size!");
+	Ogre::Vector4* pInstancedData = mInstanceBuffer->insertValue<Ogre::Vector4>();
+	pInstancedData->y = pDatablock->mShadowConstantBias * mConstantBiasScale;
 
 	// Get the instance index.
-	return static_cast<uint32_t>(mMaterialIndicesBufferPool->getWrittenSize()) / (sizeof(uint32_t) * 4) - 1;
+	return static_cast<uint32_t>(mInstanceBuffer->getWrittenSize()) / sizeof(Ogre::Vector4) - 1;
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CustomHlms::setupDescBindingRanges(Ogre::DescBindingRange* descBindingRanges)
 {
-	Ogre::setDescBindingRange(descBindingRanges[Ogre::DescBindingTypes::ConstBuffer], 0, 2);
+	Ogre::setDescBindingRange(descBindingRanges[Ogre::DescBindingTypes::ConstBuffer], 0, 1);
 	Ogre::setDescBindingRange(descBindingRanges[Ogre::DescBindingTypes::ReadOnlyBuffer], 0, 1);
 }
 

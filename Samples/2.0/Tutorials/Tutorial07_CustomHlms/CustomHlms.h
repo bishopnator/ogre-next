@@ -12,7 +12,8 @@ namespace Demo
 	public:
 		struct PassBuffer final
 		{
-			Ogre::Matrix4 m_ViewProjMatrix;
+			Ogre::Matrix4 mViewProjMatrix;
+			Ogre::Vector4 mDepthRange;
 		};
 
 	public:
@@ -39,13 +40,13 @@ namespace Demo
 		Ogre::uint32 fillBuffersForV1(const Ogre::HlmsCache* pCache, const Ogre::QueuedRenderable& queuedRenderable, bool casterPass, Ogre::CommandBuffer* pCommandBuffer) override;
 		Ogre::uint32 fillBuffersForV2(const Ogre::HlmsCache* pCache, const Ogre::QueuedRenderable& queuedRenderable, bool casterPass, Ogre::CommandBuffer* pCommandBuffer) override;
 
-	protected:
+	protected: /// Ogre::Hlms interface
 		void setupDescBindingRanges(Ogre::DescBindingRange* descBindingRanges) override;
 		Ogre::HlmsDatablock* createDatablockImpl(Ogre::IdString datablockName, const Ogre::HlmsMacroblock* pMacroblock, const Ogre::HlmsBlendblock* pBlendblock, const Ogre::HlmsParamVec& paramVec) override;
 
 	private:
 		Ogre::HlmsBufferPool* mPassBufferPool = nullptr;
 		Ogre::HlmsBufferPool* mWorldMatricesBufferPool = nullptr;
-		Ogre::HlmsBufferPool* mMaterialIndicesBufferPool = nullptr;
+		Ogre::HlmsBufferPool* mInstanceBuffer = nullptr;
 	};
 } // namespace Demo
