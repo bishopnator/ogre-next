@@ -41,6 +41,9 @@ namespace Ogre
 		/// Bind the buffers to the shaders if needed.
 		void bindBuffers(const BufferPool& bufferPool, CommandBuffer& commandBuffer);
 
+		/// Update the buffers if needed. If any ConstBufferPoolUser changes something, it is just marked as dirty. The data are uploaded when this method is called.
+		void updateBuffers();
+
 	public: // ConstBufferPool interface
 		void _changeRenderSystem(RenderSystem* pRenderSystem) override;
 

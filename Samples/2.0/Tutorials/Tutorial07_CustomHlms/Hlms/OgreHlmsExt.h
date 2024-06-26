@@ -27,6 +27,23 @@ namespace Ogre
 		HlmsExt(HlmsTypes type, const String& typeName, Archive* dataFolder, ArchiveVec* pLibraryFolders);
 		~HlmsExt() override;
 
+		/// Setup the parameters for the primary buffers which hold the data from HlmsDatablocks. The primary buffer is always ConstBufferPacked.
+		/// @see HlmsMaterialBufferPool::setPrimaryBufferParams
+		void setDatablocksPrimaryBufferParams(const std::initializer_list<ShaderType>& stages, uint16_t slot, size_t datablockSize);
+
+		/// Setup the parameters for the secondary buffers which hold the data from HlmsDatablocks. The secondary buffer is either ConstBufferPacked or ReadOnlyBufferPacked.
+		/// @see HlmsMaterialBufferPool::setSecondaryBufferParams
+		void setDatablocksSecondaryBufferParams(const std::initializer_list<ShaderType>& stages, uint16_t slot, size_t datablockSize, BufferType bufferType = BT_DEFAULT, bool useReadOnlyBuffers = true);
+
+		/// Request a slot for the datablock (only if it inherits from ConstBufferPoolUser). This should be called by the datablock constructor.
+		void requestDatablockSlot(ConstBufferPoolUser& datablock, uint32_t hash, bool useSecondaryBuffer);
+
+		/// Release a slot from the datablock (only if it inherits from ConstBufferPoolUser). This should be called by the datablock destructor.
+		void releaseDatablockSlot(ConstBufferPoolUser& datablock);
+
+		/// Notify the hlms that the datablock has been changed. It will schedule the update when preparePassHash is called.
+		void invalidateDatablockSlot(ConstBufferPoolUser& datablock);
+
 		/// Create a const buffer pool with the requested bindings.
 		/// @param stages		Combination of ShaderType values.
 		/// @param slot			Slot index to which the buffers will be bound.

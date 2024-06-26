@@ -100,6 +100,12 @@ void HlmsMaterialBufferPool::bindBuffers(const BufferPool& bufferPool, CommandBu
 }
 
 //////////////////////////////////////////////////////////////////////////
+void HlmsMaterialBufferPool::updateBuffers()
+{
+	uploadDirtyDatablocks();
+}
+
+//////////////////////////////////////////////////////////////////////////
 void HlmsMaterialBufferPool::_changeRenderSystem(RenderSystem* pRenderSystem)
 {
 	if (!IsValid())

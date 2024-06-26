@@ -28,6 +28,38 @@ HlmsExt::~HlmsExt()
 }
 
 //////////////////////////////////////////////////////////////////////////
+void HlmsExt::setDatablocksPrimaryBufferParams(const std::initializer_list<ShaderType>& stages, uint16_t slot, size_t datablockSize)
+{
+	mMaterialBufferPool.setPrimaryBufferParams(stages, slot, datablockSize);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void HlmsExt::setDatablocksSecondaryBufferParams(const std::initializer_list<ShaderType>& stages, uint16_t slot, size_t datablockSize, BufferType bufferType, bool useReadOnlyBuffers)
+{
+	mMaterialBufferPool.setSecondaryBufferParams(stages, slot, datablockSize, bufferType, useReadOnlyBuffers);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void HlmsExt::requestDatablockSlot(ConstBufferPoolUser& datablock, uint32_t hash, bool useSecondaryBuffer)
+{
+	mMaterialBufferPool.requestSlot(hash, &datablock, useSecondaryBuffer);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void HlmsExt::releaseDatablockSlot(ConstBufferPoolUser& datablock)
+{
+	if (datablock.getAssignedPool() != nullptr)
+		mMaterialBufferPool.releaseSlot(&datablock);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void HlmsExt::invalidateDatablockSlot(ConstBufferPoolUser& datablock)
+{
+	assert(datablock.getAssignedPool() != nullptr);
+	mMaterialBufferPool.scheduleForUpdate(&datablock);
+}
+
+//////////////////////////////////////////////////////////////////////////
 HlmsBufferPool& HlmsExt::createConstBufferPool(const std::initializer_list<ShaderType>& stages, uint16_t slot, size_t bufferSize)
 {
 	mBufferPools.push_back(OGRE_NEW HlmsConstBufferPool(bufferSize));
@@ -97,12 +129,17 @@ void HlmsExt::frameEnded(void)
 }
 
 //////////////////////////////////////////////////////////////////////////
-Ogre::HlmsCache HlmsExt::preparePassHash(const CompositorShadowNode* pShadowNode, bool casterPass, bool dualParaboloid, SceneManager* pSceneManager)
+HlmsCache HlmsExt::preparePassHash(const CompositorShadowNode* pShadowNode, bool casterPass, bool dualParaboloid, SceneManager* pSceneManager)
 {
 	CamerasInProgress cameras = pSceneManager->getCamerasInProgress();
 	mConstantBiasScale = cameras.renderingCamera != nullptr ? cameras.renderingCamera->_getConstantBiasScale() : 0.1f;
 
-	return Hlms::preparePassHash(pShadowNode, casterPass, dualParaboloid, pSceneManager);
+	HlmsCache hlmsCache = Hlms::preparePassHash(pShadowNode, casterPass, dualParaboloid, pSceneManager);
+
+	// Upload all dirty datablocks to the buffers.
+	mMaterialBufferPool.updateBuffers();
+
+	return hlmsCache;
 }
 
 //////////////////////////////////////////////////////////////////////////
