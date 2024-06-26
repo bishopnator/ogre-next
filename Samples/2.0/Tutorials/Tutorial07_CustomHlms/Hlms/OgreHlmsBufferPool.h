@@ -39,7 +39,7 @@ namespace Ogre
 		/// @throw Exception if a buffer is currently mapped.
 		void setBinding(uint8_t stages, uint16_t slot);
 
-		/// Bind the buffers to the shaders.
+		/// Bind the buffer to the shaders.
 		void bindBuffer(CommandBuffer* pCommandBuffer);
 
 		/// Set new render system to be used with the manager.
