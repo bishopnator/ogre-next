@@ -25,8 +25,13 @@ CustomHlms::CustomHlms(Ogre::Archive* pDataFolder, Ogre::ArchiveVec* pLibraryFol
 
 	// max. space for 4096 instances
 	constexpr size_t cMaxNumInstances = 4096;
-	mInstanceBuffer = &createConstBufferPool({ Ogre::VertexShader}, 1, cMaxNumInstances * sizeof(Ogre::Vector4));
+	mInstanceBuffer = &createConstBufferPool({ Ogre::VertexShader, Ogre::PixelShader }, 1, cMaxNumInstances * sizeof(Ogre::Vector4));
 	mWorldMatricesBufferPool = &createReadOnlyBufferPool({ Ogre::VertexShader }, 0, cMaxNumInstances * sizeof(Ogre::Matrix4));
+
+	// datablocks
+	setDatablocksPrimaryBufferParams({ Ogre::PixelShader }, 2, CustomHlmsDataBlock::getPrimaryBufferDatablockSize());
+	if (CustomHlmsDataBlock::getSecondaryBufferDatablockSize() != 0)
+		setDatablocksSecondaryBufferParams({ Ogre::PixelShader }, 2, CustomHlmsDataBlock::getSecondaryBufferDatablockSize());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -126,6 +131,7 @@ Ogre::uint32 CustomHlms::fillBuffersForV2(const Ogre::HlmsCache* pCache, const O
 	// Write instance data.
 	static_assert(sizeof(Ogre::Vector4) == sizeof(float) * 4, "Ogre::Vector4 has not expected size!");
 	Ogre::Vector4* pInstancedData = mInstanceBuffer->insertValue<Ogre::Vector4>();
+	pInstancedData->x = static_cast<float>(pDatablock->getAssignedSlot());
 	pInstancedData->y = pDatablock->mShadowConstantBias * mConstantBiasScale;
 
 	// Get the instance index.
@@ -135,7 +141,7 @@ Ogre::uint32 CustomHlms::fillBuffersForV2(const Ogre::HlmsCache* pCache, const O
 //////////////////////////////////////////////////////////////////////////
 void CustomHlms::setupDescBindingRanges(Ogre::DescBindingRange* descBindingRanges)
 {
-	Ogre::setDescBindingRange(descBindingRanges[Ogre::DescBindingTypes::ConstBuffer], 0, 1);
+	Ogre::setDescBindingRange(descBindingRanges[Ogre::DescBindingTypes::ConstBuffer], 0, 2);
 	Ogre::setDescBindingRange(descBindingRanges[Ogre::DescBindingTypes::ReadOnlyBuffer], 0, 1);
 }
 

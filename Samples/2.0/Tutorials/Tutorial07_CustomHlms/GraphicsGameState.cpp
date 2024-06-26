@@ -24,6 +24,9 @@
 #include "OgreHlmsUnlit.h"
 #include "OgreHlmsUnlitDatablock.h"
 
+// std
+#include <array>
+
 using namespace Demo;
 
 extern const double cFrametime;
@@ -75,12 +78,35 @@ namespace Demo
         //auto* pDataBlock = static_cast<Ogre::HlmsUnlitDatablock*>(pHlmsUnlit->createDatablock("test", "test", Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
         //pDataBlock->setUseColour(true);
         //pDataBlock->setColour(Ogre::ColourValue(0, 0.25, 1));
-        auto* pDataBlock = static_cast<CustomHlmsDataBlock*>(pCustomHlms->createDatablock("test", "test", Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
+
+        const std::array<Ogre::Vector4, 16> colorTable = {
+            Ogre::Vector4(1.0, 0.0, 0.0, 1.0),
+            Ogre::Vector4(0.0, 1.0, 0.0, 1.0),
+            Ogre::Vector4(0.0, 0.0, 1.0, 1.0),
+            Ogre::Vector4(1.0, 1.0, 0.0, 1.0),
+            Ogre::Vector4(1.0, 0.0, 1.0, 1.0),
+            Ogre::Vector4(0.0, 1.0, 1.0, 1.0),
+            Ogre::Vector4(1.0, 1.0, 1.0, 1.0),
+            Ogre::Vector4(0.0, 0.0, 0.0, 1.0),
+
+            Ogre::Vector4(0.5, 0.0, 0.0, 1.0),
+            Ogre::Vector4(0.0, 0.5, 0.0, 1.0),
+            Ogre::Vector4(0.0, 0.0, 0.5, 1.0),
+            Ogre::Vector4(0.5, 0.5, 0.0, 1.0),
+            Ogre::Vector4(0.5, 0.0, 0.5, 1.0),
+            Ogre::Vector4(0.0, 0.5, 0.5, 1.0),
+            Ogre::Vector4(0.5, 0.5, 0.5, 1.0),
+            Ogre::Vector4(0.2, 0.2, 0.2, 1.0)
+        };
 
         for( int i = 0; i < 4; ++i )
         {
             for( int j = 0; j < 4; ++j )
             {
+                const Ogre::String datablockName = "test" + std::to_string(j + i * 4);
+                auto* pDatablock = static_cast<CustomHlmsDataBlock*>(pCustomHlms->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
+                pDatablock->setColor(colorTable[j + i * 4]);
+
                 Ogre::String meshName;
 
                 if( i == j )
@@ -93,7 +119,7 @@ namespace Demo
                     Ogre::SCENE_DYNAMIC );
                 
                 // Set material from CustomHlms.
-                item->setDatablock(pDataBlock);
+                item->setDatablock(pDatablock);
                 //item->setCastShadows(false);
 
 //                 if( i % 2 == 0 )
