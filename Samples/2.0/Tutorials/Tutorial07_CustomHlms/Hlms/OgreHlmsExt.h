@@ -83,6 +83,18 @@ namespace Ogre
 		descBindingRange.end = endSlot;
 	}
 
+	/// Helper function to convert float value to uint32_t which can be accessed in shader using uintBitsToFloat.
+	inline uint32_t FloatBitsToUint(float value)
+	{
+		return *reinterpret_cast<uint32_t *>(&value);
+	}
+
+    /// Helper function to convert uint32_t value to float which can be accessed in shader using floatBitsToUint.
+    inline float UintBitsToFloat(uint32_t value)
+	{
+		return *reinterpret_cast<float*>(&value);
+	}
+
 	/// Helper template to implement registration of the HLMS.
 	/// The code is copied from GraphicsSystem::registerHlms().
 	template<typename HlmsT>
