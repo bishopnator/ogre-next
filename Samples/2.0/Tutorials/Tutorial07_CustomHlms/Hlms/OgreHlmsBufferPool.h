@@ -59,9 +59,41 @@ namespace Ogre
 		/// Unmaps the buffer.
 		void unmapBuffer(CommandBuffer* pCommandBuffer);
 
-		/// Write data to the buffer - must be mapped by previous call MapNextBuffer.
+		/// Write data to the buffer - must be mapped by previous call mapNextBuffer.
         /// @throw Exception if a buffer is not mapped or if there is not enough space for the numBytes.
 		void writeData(const void* pData, size_t numBytes);
+
+		/// Get the pointer for writing a value in the buffer. Must be mapped by previous call mapNextBuffer.
+		template<typename T>
+		T* insertValue()
+		{
+			if (mStartPtr == nullptr)
+				OGRE_EXCEPT(Ogre::Exception::ERR_INVALID_STATE, "Buffer is not mapped.", "HlmsBufferPool::insertValue");
+
+			const size_t written = (mCurrentPtr - mStartPtr) * sizeof(uint8_t);
+			if (written + sizeof(T) > mCapacity)
+				OGRE_EXCEPT(Ogre::Exception::ERR_INVALID_STATE, "Buffer overflow.", "HlmsBufferPool::insertValue");
+
+			T* pValue = reinterpret_cast<T*>(mCurrentPtr);
+			mCurrentPtr += sizeof(T);
+			return pValue;
+		}
+
+		/// Get the pointer for writing multiple values in the buffer. Must be mapped by previous call mapNextBuffer.
+		template<typename T>
+		T* insertValues(size_t numValues)
+		{
+			if (mStartPtr == nullptr)
+				OGRE_EXCEPT(Ogre::Exception::ERR_INVALID_STATE, "Buffer is not mapped.", "HlmsBufferPool::insertValues");
+
+			const size_t written = (mCurrentPtr - mStartPtr) * sizeof(uint8_t);
+			if (written + numValues * sizeof(T) > mCapacity)
+				OGRE_EXCEPT(Ogre::Exception::ERR_INVALID_STATE, "Buffer overflow.", "HlmsBufferPool::insertValues");
+
+			T* pValue = reinterpret_cast<T*>(mCurrentPtr);
+			mCurrentPtr += numValues * sizeof(T);
+			return pValue;
+		}
 
 		/// Check whether there is enough space in the currently mapped range to write give size of data.
 		bool canWrite(size_t numBytes) const;

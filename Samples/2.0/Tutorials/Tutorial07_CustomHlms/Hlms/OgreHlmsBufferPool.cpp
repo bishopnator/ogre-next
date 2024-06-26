@@ -282,11 +282,11 @@ void HlmsBufferPool::unmapBufferSubRange(CommandBuffer* pCommandBuffer)
 void HlmsBufferPool::writeData(const void* pData, size_t numBytes)
 {
 	if (mStartPtr == nullptr)
-		OGRE_EXCEPT(Ogre::Exception::ERR_INVALID_STATE, "Buffer is not mapped.", "HlmsBufferPool::WriteData");
+		OGRE_EXCEPT(Ogre::Exception::ERR_INVALID_STATE, "Buffer is not mapped.", "HlmsBufferPool::writeData");
 
 	const size_t written = (mCurrentPtr - mStartPtr) * sizeof(uint8_t);
 	if (written + numBytes > mCapacity)
-		OGRE_EXCEPT(Ogre::Exception::ERR_INVALID_STATE, "Buffer overflow.", "HlmsBufferPool::WriteData");
+		OGRE_EXCEPT(Ogre::Exception::ERR_INVALID_STATE, "Buffer overflow.", "HlmsBufferPool::writeData");
 
 	memcpy(mCurrentPtr, pData, numBytes);
 	mCurrentPtr += numBytes;
