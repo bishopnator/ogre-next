@@ -16,13 +16,13 @@ struct vs_out {
 @insertpiece(Common_Matrix_DeclUnpackMatrix4x4)
 @insertpiece(Common_Matrix_DeclUnpackMatrix4x3)
 
+#include "PassData.hlsl"
+
 // pass buffer
-CONST_BUFFER_STRUCT_BEGIN(PassBuffer, 0)
+CONST_BUFFER(PassBuffer, 0)
 {
-	float4x4 viewProj;
-	float4 depthRange;
+	PassData passData;
 }
-CONST_BUFFER_STRUCT_END(passBuf);
 
 // Uniforms that change per Item/Entity
 CONST_BUFFER(InstanceBuffer, 1)
@@ -45,8 +45,8 @@ CONST_BUFFER(InstanceBuffer, 1)
 ReadOnlyBuffer(0, float4, worldMatricesBuf);
 
 @piece(shadow_caster_update_pos)
-  //float shadowConstantBias = -uintBitsToFloat(worldMaterialIdx[input.drawId].y) * passBuf.depthRange.y;
-  float shadowConstantBias = -worldMaterialIdx[input.drawId].y * passBuf.depthRange.y;
+  //float shadowConstantBias = -uintBitsToFloat(worldMaterialIdx[input.drawId].y) * passData.depthRange.y;
+  float shadowConstantBias = -worldMaterialIdx[input.drawId].y * passData.depthRange.y;
   output.position_clip.z = output.position_clip.z + shadowConstantBias;
 @end
 
@@ -61,7 +61,7 @@ vs_out main(vs_in input)
   //float4x4 worldMat = UNPACK_MAT4(worldMatricesBuf, input.drawId);
   //float4 worldPos = mul(input.position_local, worldMat);
   
-  output.position_clip = mul(worldPos, passBuf.viewProj);
+  output.position_clip = mul(worldPos, passData.viewProj);
   output.drawId = input.drawId;
   
 @property( hlms_shadowcaster )

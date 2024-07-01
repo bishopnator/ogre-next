@@ -2,6 +2,17 @@
 #include "CustomHlmsDataBlock.h"
 #include "Hlms/OgreHlmsBufferPool.h"
 
+// Shader data for CustomHlms shared between c++ and hlsl
+#include <OgreShaderPrimitives.h>
+namespace Ogre
+{
+	#include <CustomHlms/HLSL/PassData.hlsl>
+}
+namespace Demo
+{
+	using PassData = Ogre::PassData;
+}
+
 // OGRE
 #include <OgreArchiveManager.h>
 #include <OgreCamera.h>
@@ -21,7 +32,7 @@ using namespace Demo;
 CustomHlms::CustomHlms(Ogre::Archive* pDataFolder, Ogre::ArchiveVec* pLibraryFolders)
 : Ogre::HlmsExt(Ogre::HLMS_USER0, "CustomHlms", pDataFolder, pLibraryFolders)
 {
-	mPassBufferPool = &createConstBufferPool({ Ogre::VertexShader }, 0, sizeof(PassBuffer));
+	mPassBufferPool = &createConstBufferPool({ Ogre::VertexShader }, 0, sizeof(PassData));
 
 	// max. space for 4096 instances
 	constexpr size_t cMaxNumInstances = 4096;
@@ -85,18 +96,18 @@ Ogre::Matrix4 viewMatrix = cameras.renderingCamera->getViewMatrix(true);
 	mPassBufferPool->mapBuffer(nullptr);
 
 	// Fill pass buffer.
-	PassBuffer* pPassBuffer = mPassBufferPool->insertValue<PassBuffer>();
+	PassData* pPassData = mPassBufferPool->insertValue<PassData>();
 	if (casterPass && pShadowNode != nullptr)
 	{
 		Ogre::Real fNear, fFar;
 		pShadowNode->getMinMaxDepthRange(cameras.renderingCamera, fNear, fFar);
 		const Ogre::Real depthRange = fFar - fNear;
-		pPassBuffer->mDepthRange.x = fNear;
-		pPassBuffer->mDepthRange.y = 1.0f / depthRange;
-		pPassBuffer->mDepthRange.z = 0.0;
-		pPassBuffer->mDepthRange.w = 0.0;
+		pPassData->depthRange.x = fNear;
+		pPassData->depthRange.y = 1.0f / depthRange;
+		pPassData->depthRange.z = 0.0;
+		pPassData->depthRange.w = 0.0;
 	}
-	pPassBuffer->mViewProjMatrix = projectionMatrix * viewMatrix;
+	pPassData->viewProj = projectionMatrix * viewMatrix;
 
 	// Pass buffer is filled - it is possible to unmap it now.
 	mPassBufferPool->unmapBuffer(nullptr);

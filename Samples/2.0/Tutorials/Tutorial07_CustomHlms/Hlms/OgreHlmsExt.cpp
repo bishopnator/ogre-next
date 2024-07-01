@@ -8,6 +8,7 @@
 #include <OgreHlmsListener.h>
 #include <OgreRenderable.h>
 #include <OgreRenderQueue.h>
+#include <OgreRoot.h>
 #include <OgreSceneManager.h>
 
 using namespace Ogre;
@@ -18,6 +19,15 @@ HlmsExt::HlmsExt(HlmsTypes type, const String& typeName, Archive* pDataFolder, A
 , mReadOnlyBufferPoolsCount(0)
 , mConstantBiasScale(0.1f)
 {
+	// Add folders also to resource manager so the #include directives in the shaders works properly.
+	if (pDataFolder != nullptr)
+		Root::getSingleton().addResourceLocation(pDataFolder->getName(), "FileSystem");
+
+	if (pLibraryFolders != nullptr)
+	{
+		for (auto* pLibraryFolder : *pLibraryFolders)
+			Root::getSingleton().addResourceLocation(pLibraryFolder->getName(), "FileSystem");
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////

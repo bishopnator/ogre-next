@@ -10,13 +10,6 @@ namespace Demo
 	class CustomHlms : public Ogre::HlmsExt
 	{
 	public:
-		struct PassBuffer final
-		{
-			Ogre::Matrix4 mViewProjMatrix;
-			Ogre::Vector4 mDepthRange;
-		};
-
-	public:
 		explicit CustomHlms(Ogre::Archive* pDataFolder, Ogre::ArchiveVec* pLibraryFolders);
 		~CustomHlms() override;
 

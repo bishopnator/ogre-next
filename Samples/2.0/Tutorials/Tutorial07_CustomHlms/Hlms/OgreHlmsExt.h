@@ -150,19 +150,19 @@ namespace Ogre
 		// Create & Register HlmsT
 		// Get the path to all the subdirectories used by HlmsT
 		HlmsT::getDefaultPaths( mainFolderPath, libraryFoldersPaths );
-		Archive *archiveUnlit = archiveManager.load( rootHlmsFolder + mainFolderPath, archiveType, true );
+		Archive* pRootArchive = archiveManager.load(rootHlmsFolder + mainFolderPath, archiveType, true);
 		ArchiveVec archiveLibraryFolders;
 		libraryFolderPathIt = libraryFoldersPaths.begin();
 		libraryFolderPathEn = libraryFoldersPaths.end();
 		while( libraryFolderPathIt != libraryFolderPathEn )
 		{
-			Archive *archiveLibrary = archiveManager.load( rootHlmsFolder + *libraryFolderPathIt, archiveType, true );
+			Archive *archiveLibrary = archiveManager.load(rootHlmsFolder + *libraryFolderPathIt, archiveType, true);
 			archiveLibraryFolders.push_back( archiveLibrary );
 			++libraryFolderPathIt;
 		}
 
 		// Create and register the HlmsT.
-		HlmsT* pHlms = OGRE_NEW HlmsT( archiveUnlit, &archiveLibraryFolders);
-		Root::getSingleton().getHlmsManager()->registerHlms( pHlms );
+		HlmsT* pHlms = OGRE_NEW HlmsT(pRootArchive, &archiveLibraryFolders);
+		Root::getSingleton().getHlmsManager()->registerHlms(pHlms);
 	}
 } // namespace Ogre
