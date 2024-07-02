@@ -10,6 +10,8 @@ struct vs_out {
 	@insertpiece( DeclShadowCasterMacros )
 @end
 
+#include "InstanceData.hlsl"
+
 // Uniforms that change per Item/Entity
 CONST_BUFFER(InstanceBuffer, 1)
 {
@@ -21,19 +23,21 @@ CONST_BUFFER(InstanceBuffer, 1)
 	// unnecessary indirection during the shadow mapping pass.
 	// Must be loaded with uintBitsToFloat
 @property( fast_shader_build_hack )
-	float4 worldMaterialIdx[2];
+	InstanceData instanceData[2];
 @else
-	float4 worldMaterialIdx[4096];
+	InstanceData instanceData[4096];
 @end
 };
 
+#include "MaterialData.hlsl"
+
 // Materials - data collected from HlmsDatablock instances
-CONST_BUFFER(MaterialData, 2)
+CONST_BUFFER(MaterialBuffer, 2)
 {
 @property(fast_shader_build_hack)
-	float4 color[2];
+	MaterialData materialData[2];
 @else
-	float4 color[4096];
+	MaterialData materialData[4096];
 @end
 };
 
@@ -41,9 +45,6 @@ CONST_BUFFER(MaterialData, 2)
 @insertpiece(DeclOutputType)
 
 @insertpiece(output_type) main(vs_out input)
-@property(!hlms_render_depth_only)
- : SV_TARGET
-@end
 {
 	PS_OUTPUT outPs;
 	
@@ -51,8 +52,8 @@ CONST_BUFFER(MaterialData, 2)
 	@insertpiece(DoShadowCastPS)
 @end
 @property(!hlms_render_depth_only)
-  uint materialIndex = uint(worldMaterialIdx[input.drawId].x);
-  outPs.colour0 = color[materialIndex]; // must return an RGBA colour
+  uint materialIndex = uint(instanceData[input.drawId].worldMaterialIdx.x);
+  outPs.colour0 = materialData[materialIndex].color; // must return an RGBA colour
   return outPs;
 @end
 }

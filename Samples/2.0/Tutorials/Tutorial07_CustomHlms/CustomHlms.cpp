@@ -6,10 +6,12 @@
 #include <OgreShaderPrimitives.h>
 namespace Ogre
 {
+	#include <CustomHlms/HLSL/InstanceData.hlsl>
 	#include <CustomHlms/HLSL/PassData.hlsl>
 }
 namespace Demo
 {
+	using InstanceData = Ogre::InstanceData;
 	using PassData = Ogre::PassData;
 }
 
@@ -141,12 +143,12 @@ Ogre::uint32 CustomHlms::fillBuffersForV2(const Ogre::HlmsCache* pCache, const O
 
 	// Write instance data.
 	static_assert(sizeof(Ogre::Vector4) == sizeof(float) * 4, "Ogre::Vector4 has not expected size!");
-	Ogre::Vector4* pInstancedData = mInstanceBuffer->insertValue<Ogre::Vector4>();
-	pInstancedData->x = static_cast<float>(pDatablock->getAssignedSlot());
-	pInstancedData->y = pDatablock->mShadowConstantBias * mConstantBiasScale;
+	InstanceData* pInstancedData = mInstanceBuffer->insertValue<InstanceData>();
+	pInstancedData->worldMaterialIdx.x = static_cast<float>(pDatablock->getAssignedSlot());
+	pInstancedData->worldMaterialIdx.y = pDatablock->mShadowConstantBias * mConstantBiasScale;
 
 	// Get the instance index.
-	return static_cast<uint32_t>(mInstanceBuffer->getWrittenSize()) / sizeof(Ogre::Vector4) - 1;
+	return static_cast<uint32_t>(mInstanceBuffer->getWrittenSize()) / sizeof(InstanceData) - 1;
 }
 
 //////////////////////////////////////////////////////////////////////////

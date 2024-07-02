@@ -24,6 +24,8 @@ CONST_BUFFER(PassBuffer, 0)
 	PassData passData;
 }
 
+#include "InstanceData.hlsl"
+
 // Uniforms that change per Item/Entity
 CONST_BUFFER(InstanceBuffer, 1)
 {
@@ -35,9 +37,9 @@ CONST_BUFFER(InstanceBuffer, 1)
 	// unnecessary indirection during the shadow mapping pass.
 	// Must be loaded with uintBitsToFloat
 @property( fast_shader_build_hack )
-	float4 worldMaterialIdx[2];
+	InstanceData instanceData[2];
 @else
-	float4 worldMaterialIdx[4096];
+	InstanceData instanceData[4096];
 @end
 };
 
@@ -45,8 +47,8 @@ CONST_BUFFER(InstanceBuffer, 1)
 ReadOnlyBuffer(0, float4, worldMatricesBuf);
 
 @piece(shadow_caster_update_pos)
-  //float shadowConstantBias = -uintBitsToFloat(worldMaterialIdx[input.drawId].y) * passData.depthRange.y;
-  float shadowConstantBias = -worldMaterialIdx[input.drawId].y * passData.depthRange.y;
+  //float shadowConstantBias = -uintBitsToFloat(instanceData[input.drawId].worldMaterialIdx.y) * passData.depthRange.y;
+  float shadowConstantBias = -instanceData[input.drawId].worldMaterialIdx.y * passData.depthRange.y;
   output.position_clip.z = output.position_clip.z + shadowConstantBias;
 @end
 

@@ -1,6 +1,17 @@
 #include "CustomHlmsDataBlock.h"
 #include "CustomHlms.h"
 
+// Shader data for CustomHlms shared between c++ and hlsl
+#include <OgreShaderPrimitives.h>
+namespace Ogre
+{
+	#include <CustomHlms/HLSL/MaterialData.hlsl>
+}
+namespace Demo
+{
+	using MaterialData = Ogre::MaterialData;
+}
+
 using namespace Demo;
 
 //////////////////////////////////////////////////////////////////////////
@@ -20,7 +31,8 @@ CustomHlmsDataBlock::~CustomHlmsDataBlock()
 //////////////////////////////////////////////////////////////////////////
 void CustomHlmsDataBlock::uploadToConstBuffer(char* dstPtr, Ogre::uint8 /*dirtyFlags*/)
 {
-	memcpy(dstPtr, &mColor, sizeof(Ogre::Vector4));
+	MaterialData* pMaterialData = reinterpret_cast<MaterialData*>(dstPtr);
+	pMaterialData->color = mColor;
 }
 
 //////////////////////////////////////////////////////////////////////////
