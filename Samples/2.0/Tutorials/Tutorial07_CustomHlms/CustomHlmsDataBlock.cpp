@@ -38,7 +38,7 @@ void CustomHlmsDataBlock::uploadToConstBuffer(char* dstPtr, Ogre::uint8 /*dirtyF
 //////////////////////////////////////////////////////////////////////////
 size_t CustomHlmsDataBlock::getPrimaryBufferDatablockSize()
 {
-	return sizeof(Ogre::Vector4);
+	return sizeof(MaterialData);
 }
 
 //////////////////////////////////////////////////////////////////////////
