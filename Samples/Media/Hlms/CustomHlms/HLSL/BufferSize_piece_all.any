@@ -1,0 +1,7 @@
+@piece(define_n4096)
+@property( fast_shader_build_hack )
+#define n4096 2
+@else
+#define n4096 4096
+@end
+@end

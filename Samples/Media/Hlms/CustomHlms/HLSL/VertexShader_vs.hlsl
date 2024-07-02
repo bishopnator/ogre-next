@@ -1,4 +1,5 @@
 @insertpiece( SetCrossPlatformSettings )
+@insertpiece( define_n4096 )
 
 // vertex attributes go here to input to the vertex shader
 struct vs_in
@@ -36,11 +37,7 @@ CONST_BUFFER(InstanceBuffer, 1)
 	// shadowConstantBias. Send the bias directly to avoid an
 	// unnecessary indirection during the shadow mapping pass.
 	// Must be loaded with uintBitsToFloat
-@property( fast_shader_build_hack )
-	InstanceData instanceData[2];
-@else
-	InstanceData instanceData[4096];
-@end
+	InstanceData instanceData[n4096];
 };
 
 // Automatic instancing - collected world transformations

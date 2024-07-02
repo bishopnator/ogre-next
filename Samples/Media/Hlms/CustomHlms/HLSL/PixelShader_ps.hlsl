@@ -1,4 +1,5 @@
 @insertpiece( SetCrossPlatformSettings )
+@insertpiece( define_n4096 )
 
 // outputs from vertex shader go here. can be interpolated to pixel shader
 struct vs_out {
@@ -22,11 +23,7 @@ CONST_BUFFER(InstanceBuffer, 1)
 	// shadowConstantBias. Send the bias directly to avoid an
 	// unnecessary indirection during the shadow mapping pass.
 	// Must be loaded with uintBitsToFloat
-@property( fast_shader_build_hack )
-	InstanceData instanceData[2];
-@else
-	InstanceData instanceData[4096];
-@end
+	InstanceData instanceData[n4096];
 };
 
 #include "MaterialData.hlsl"
@@ -34,11 +31,7 @@ CONST_BUFFER(InstanceBuffer, 1)
 // Materials - data collected from HlmsDatablock instances
 CONST_BUFFER(MaterialBuffer, 2)
 {
-@property(fast_shader_build_hack)
-	MaterialData materialData[2];
-@else
-	MaterialData materialData[4096];
-@end
+	MaterialData materialData[n4096];
 };
 
 
