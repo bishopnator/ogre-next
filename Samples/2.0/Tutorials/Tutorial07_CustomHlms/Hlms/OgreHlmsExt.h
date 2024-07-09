@@ -16,11 +16,29 @@ namespace Ogre
 namespace Ogre
 {
 	/// Base implementation of Hlms which uses HlmsBufferPool management.
-	/// To make full implementation of Hlms using this class, it is necessary to implement the following pure virtual methods:
+	/// To make full implementation of Hlms using this class, it is necessary to implement the following virtual methods:
 	/// * setupDescBindingRange
+	/// * preparePassHash
 	/// * fillBuffersForV1
 	/// * fillBuffersForV2
 	/// * createDatablockImpl
+	/// 
+	/// In the constructor of inherited class, it is necessary to create buffers used by the hlms.
+	/// * createConstBufferPool/createReadOnlyBufferPool
+	/// * setup buffers which hold the data from datablocks: setDatablocksPrimaryBufferParams/setDatablocksSecondaryBufferParams
+	/// 
+	/// The implementation of preparePassHash fills the buffer(s) with pass data which are the same for all rendered instances:
+	/// * view-projection matrix, render target resolution, etc.
+	/// The buffers are filled, but not bound - there is no access to the CommandBuffer and hence the mapBuffer is called with nullptr.
+	/// This implies that only const buffers are possible to use for the pass data.
+	/// 
+	/// The setupDescBindingRange reflects the bindings setup in the constructor.
+	/// 
+	/// The fillBuffersForV1/fillBuffersForV2 fills the per instance data in the buffers.
+	/// 
+	/// The createDatablockImpl creates the custom datablock used by the hlms. The datablock contains parameters used by instances like
+	/// colors, textures, transparency, etc. This is the closest to the "material". Multiple datablocks are stored in the same buffer so
+	/// the multiple instances can be rendered together.
 	class _OgreComponentExport HlmsExt : public Hlms
 	{
 	public:
