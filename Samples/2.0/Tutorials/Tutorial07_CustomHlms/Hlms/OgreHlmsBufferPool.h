@@ -49,11 +49,11 @@ namespace Ogre
 		void destroyAllBuffers();
 
 		/// Maps a buffer and prepares it for filling the data.
-		/// if m_MapMode == MapMode::eDirect:   Maps always next buffer and data will be written at the begining of the buffer. minimumSizeBytes is ignored
-		/// if m_MapMode == MapMode::eIndirect: Tries to map region of minimumSizeBytes (or till the end) within the current buffer. If there is not enough space (minimumSizeBytes > 0), maps next buffer.
+		/// if m_MapMode == MapMode::eBulk:     Maps always next buffer and data will be written at the begining of the buffer. minimumSizeBytes is ignored
+		/// if m_MapMode == MapMode::eSubRange: Tries to map region of minimumSizeBytes (or till the end) within the current buffer. If there is not enough space (minimumSizeBytes > 0), maps next buffer.
 		/// 
-		/// note: pCommandBuffer can be nullptr only if map mode is set to MapMode::eDirect - in this case the buffer is not bound immediately, but caller
-		///       is responsible to call BindBiffer manually later.
+		/// note: pCommandBuffer can be nullptr only if map mode is set to MapMode::eBulk - in this case the buffer is not bound immediately, but caller
+		///       is responsible to call bindBuffer manually later.
 		void mapBuffer(CommandBuffer* pCommandBuffer, size_t minimumSizeBytes = 0);
 
 		/// Unmaps the buffer.
@@ -159,5 +159,9 @@ namespace Ogre
 		/// the buffer, the command offset of the CbShaderBuffer in CommandBuffer is saved, and later when new mapping is requested,
 		/// the written data size is updated in that CbShaderBuffer.
 		size_t mShaderBufferCommandOffset;
+
+		/// Delayed binding - supported only for MapMode::eBulk when mapBuffer was called with nullptr CommandBuffer.
+		size_t mBindOffset;
+		size_t mBindBufferIndex;
 	};
 } // namespace Ogre

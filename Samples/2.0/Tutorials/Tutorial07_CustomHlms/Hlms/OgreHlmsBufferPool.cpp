@@ -46,6 +46,8 @@ HlmsBufferPool::HlmsBufferPool(MapMode mapMode, size_t defaultBufferSize)
 , mMappedOffset(0)
 , mCurrentIndex(0)
 , mShaderBufferCommandOffset(cInvalidCommandOffset)
+, mBindOffset(-1)
+, mBindBufferIndex(-1)
 {
 }
 
@@ -69,12 +71,29 @@ void HlmsBufferPool::setBinding(uint8_t stages, uint16_t slot)
 //////////////////////////////////////////////////////////////////////////
 void HlmsBufferPool::bindBuffer(CommandBuffer* pCommandBuffer)
 {
-	if (mCurrentIndex < mBuffers.size())
+	if (pCommandBuffer != nullptr && mBindOffset != size_t(-1) && mBindBufferIndex < mBuffers.size())
+	{
+		bindBuffer(*pCommandBuffer, *mBuffers[mBindBufferIndex], static_cast<uint32_t>(mBindOffset));
+		mShaderBufferCommandOffset = pCommandBuffer->getCommandOffset(pCommandBuffer->getLastCommand());
+	}
+	else if (mCurrentIndex < mBuffers.size())
 	{
 		const auto bindOffset = (mStartPtr - mMappedPtr) * sizeof(uint8_t);
+
+		if (pCommandBuffer == nullptr)
+		{
+			// save values for later binding
+			mBindOffset = mMappedOffset + bindOffset;
+			mBindBufferIndex = mCurrentIndex;
+			return;
+		}
+
 		bindBuffer(*pCommandBuffer, *mBuffers[mCurrentIndex], static_cast<uint32_t>(mMappedOffset + bindOffset));
 		mShaderBufferCommandOffset = pCommandBuffer->getCommandOffset(pCommandBuffer->getLastCommand());
 	}
+
+	mBindOffset = size_t(-1);
+	mBindBufferIndex = size_t(-1);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -162,8 +181,7 @@ void HlmsBufferPool::mapBufferBulk(CommandBuffer* pCommandBuffer, size_t /*minim
 	mStartPtr = mCurrentPtr = mMappedPtr;
 	mCapacity = pBuffer->getTotalSizeBytes();
 
-	if (pCommandBuffer != nullptr)
-		bindBuffer(pCommandBuffer);
+	bindBuffer(pCommandBuffer);
 }
 
 //////////////////////////////////////////////////////////////////////////
