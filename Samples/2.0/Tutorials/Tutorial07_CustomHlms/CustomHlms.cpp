@@ -81,7 +81,7 @@ Ogre::HlmsCache CustomHlms::preparePassHash(const Ogre::CompositorShadowNode* pS
 
 	// fill matrices to the pass buffer
 	Ogre::CamerasInProgress cameras = pSceneManager->getCamerasInProgress();
-Ogre::Matrix4 viewMatrix = cameras.renderingCamera->getViewMatrix(true);
+	Ogre::Matrix4 viewMatrix = cameras.renderingCamera->getViewMatrix(true);
 
 	Ogre::Matrix4 projectionMatrix = cameras.renderingCamera->getProjectionMatrixWithRSDepth();
 	Ogre::RenderPassDescriptor* pRenderPassDesc = mRenderSystem->getCurrentPassDescriptor();
