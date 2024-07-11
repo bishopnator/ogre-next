@@ -79,7 +79,9 @@ namespace Ogre
 		void preCommandBufferExecution(CommandBuffer* pCommandBuffer) override;
 		void postCommandBufferExecution(CommandBuffer* pCommandBuffer) override;
 		void frameEnded(void) override;
-		Ogre::HlmsCache preparePassHash(const Ogre::CompositorShadowNode* pShadowNode, bool casterPass, bool dualParaboloid, Ogre::SceneManager* pSceneManager) override;
+		void calculateHashForPreCreate(Renderable* pRenderable, PiecesMap* pInOutPieces) override;
+		void calculateHashForPreCaster(Renderable* pRenderable, PiecesMap* pInOutPieces) override;
+		HlmsCache preparePassHash(const CompositorShadowNode* pShadowNode, bool casterPass, bool dualParaboloid, SceneManager* pSceneManager) override;
 		uint32 fillBuffersFor(const HlmsCache* pCache, const QueuedRenderable& queuedRenderable, bool casterPass, uint32 lastCacheHash, uint32 lastTextureHash) override;
 		uint32 fillBuffersForV1(const HlmsCache* pCache, const QueuedRenderable& queuedRenderable, bool casterPass, uint32 lastCacheHash, CommandBuffer* pCommandBuffer) override;
 		uint32 fillBuffersForV2(const HlmsCache* pCache, const QueuedRenderable& queuedRenderable, bool casterPass, uint32 lastCacheHash, CommandBuffer* pCommandBuffer) override;
@@ -114,6 +116,9 @@ namespace Ogre
 		vector<HlmsBufferPool*>::type mBufferPools;
 
 		size_t mReadOnlyBufferPoolsCount; ///< cached due to HlmsListener::hlmsTypeChanged
+
+		/// Header files which can be included in the shaders using @insertpiece
+		PiecesMap m_HeaderFiles;
 	};
 
 	/// Helper function to initialize DescBindingRange directly as it doesn't have a constructor accepting (start, end) and

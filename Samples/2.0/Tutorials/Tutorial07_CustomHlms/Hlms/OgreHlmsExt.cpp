@@ -6,6 +6,7 @@
 #include <OgreCamera.h>
 #include <OgreHlmsDatablock.h>
 #include <OgreHlmsListener.h>
+#include <OgreLogManager.h>
 #include <OgreRenderable.h>
 #include <OgreRenderQueue.h>
 #include <OgreRoot.h>
@@ -26,7 +27,27 @@ HlmsExt::HlmsExt(HlmsTypes type, const String& typeName, Archive* pDataFolder, A
 	if (pLibraryFolders != nullptr)
 	{
 		for (auto* pLibraryFolder : *pLibraryFolders)
+		{
 			Root::getSingleton().addResourceLocation(pLibraryFolder->getName(), "FileSystem");
+
+			// load the header files
+			auto pHeaders = pLibraryFolder->find("*.h");
+			if (pHeaders != nullptr)
+			{
+				for (const auto& header : *pHeaders)
+				{
+					try
+					{
+						auto pData = pLibraryFolder->open(header);
+						m_HeaderFiles[header] = pData->getAsString();
+					}
+					catch (const Ogre::Exception& e)
+					{
+						LogManager::getSingleton().logMessage("The header file '" + header + "' from '" + pLibraryFolder->getName() + "' cannot be loaded.");
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -136,6 +157,26 @@ void HlmsExt::frameEnded(void)
 		pBufferPool->frameEnded();
 
 	Hlms::frameEnded();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void HlmsExt::calculateHashForPreCreate(Renderable* pRenderable, PiecesMap* pInOutPieces)
+{
+	Hlms::calculateHashForPreCreate(pRenderable, pInOutPieces);
+
+	// inject header files
+	for (int k = 0; k < NumShaderTypes; ++k)
+		pInOutPieces[k].insert(m_HeaderFiles.begin(), m_HeaderFiles.end());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void HlmsExt::calculateHashForPreCaster(Renderable* pRenderable, PiecesMap* pInOutPieces)
+{
+	Hlms::calculateHashForPreCaster(pRenderable, pInOutPieces);
+
+	// inject header files
+	for( int k = 0; k < NumShaderTypes; ++k )
+		pInOutPieces[k].insert(m_HeaderFiles.begin(), m_HeaderFiles.end());
 }
 
 //////////////////////////////////////////////////////////////////////////
