@@ -6,8 +6,8 @@
 #include <OgreShaderPrimitives.h>
 namespace Ogre
 {
-	#include <CustomHlms/HLSL/InstanceData.hlsl>
-	#include <CustomHlms/HLSL/PassData.hlsl>
+	#include <CustomHlms/Common/InstanceData.h>
+	#include <CustomHlms/Common/PassData.h>
 }
 namespace Demo
 {
@@ -66,6 +66,7 @@ void CustomHlms::getDefaultPaths(Ogre::String& outDataFolderPath, Ogre::StringVe
 
 	// Fill the library folder paths with the relevant folders.
 	outLibraryFoldersPaths.clear();
+    outLibraryFoldersPaths.push_back( "Hlms/CustomHlms/Common" );
     outLibraryFoldersPaths.push_back( "Hlms/Common/" + shaderSyntax );
     outLibraryFoldersPaths.push_back( "Hlms/Common/Any" );
 

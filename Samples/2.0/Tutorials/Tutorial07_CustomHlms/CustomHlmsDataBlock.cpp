@@ -5,7 +5,7 @@
 #include <OgreShaderPrimitives.h>
 namespace Ogre
 {
-	#include <CustomHlms/HLSL/MaterialData.hlsl>
+	#include <CustomHlms/Common/MaterialData.h>
 }
 namespace Demo
 {

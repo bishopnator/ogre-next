@@ -11,7 +11,7 @@ struct vs_out {
 	@insertpiece( DeclShadowCasterMacros )
 @end
 
-#include "InstanceData.hlsl"
+#include "InstanceData.h"
 
 // Uniforms that change per Item/Entity
 CONST_BUFFER(InstanceBuffer, 1)
@@ -26,7 +26,7 @@ CONST_BUFFER(InstanceBuffer, 1)
 	InstanceData instanceData[n4096];
 };
 
-#include "MaterialData.hlsl"
+#include "MaterialData.h"
 
 // Materials - data collected from HlmsDatablock instances
 CONST_BUFFER(MaterialBuffer, 2)

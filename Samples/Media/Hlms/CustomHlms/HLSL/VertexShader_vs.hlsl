@@ -17,7 +17,7 @@ struct vs_out {
 @insertpiece(Common_Matrix_DeclUnpackMatrix4x4)
 @insertpiece(Common_Matrix_DeclUnpackMatrix4x3)
 
-#include "PassData.hlsl"
+#include "PassData.h"
 
 // pass buffer
 CONST_BUFFER(PassBuffer, 0)
@@ -25,7 +25,7 @@ CONST_BUFFER(PassBuffer, 0)
 	PassData passData;
 }
 
-#include "InstanceData.hlsl"
+#include "InstanceData.h"
 
 // Uniforms that change per Item/Entity
 CONST_BUFFER(InstanceBuffer, 1)
@@ -43,12 +43,6 @@ CONST_BUFFER(InstanceBuffer, 1)
 // Automatic instancing - collected world transformations
 ReadOnlyBuffer(0, float4, worldMatricesBuf);
 
-@piece(shadow_caster_update_pos)
-  //float shadowConstantBias = -uintBitsToFloat(instanceData[input.drawId].worldMaterialIdx.y) * passData.depthRange.y;
-  float shadowConstantBias = -instanceData[input.drawId].worldMaterialIdx.y * passData.depthRange.y;
-  output.position_clip.z = output.position_clip.z + shadowConstantBias;
-@end
-
 vs_out main(vs_in input)
 {
   vs_out output = (vs_out)0; // zero the memory first
@@ -64,7 +58,8 @@ vs_out main(vs_in input)
   output.drawId = input.drawId;
   
 @property( hlms_shadowcaster )
-  @insertpiece(shadow_caster_update_pos)
+  float shadowConstantBias = -instanceData[input.drawId].worldMaterialIdx.y * passData.depthRange.y;
+  output.position_clip.z = output.position_clip.z + shadowConstantBias;
 @end
   
   return output;
