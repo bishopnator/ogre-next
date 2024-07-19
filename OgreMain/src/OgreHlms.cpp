@@ -2258,7 +2258,7 @@ namespace Ogre
                 }
 
                 codeCache.shaders[i] =
-                    compileShaderCode( source[i], "", finalHash, static_cast<ShaderType>( i ) );
+                    compileShaderCode( source[i], debugFilenameOutput, finalHash, static_cast<ShaderType>( i ) );
             }
         }
 
