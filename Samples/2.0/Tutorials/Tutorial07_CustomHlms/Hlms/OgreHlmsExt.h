@@ -80,7 +80,7 @@ namespace Ogre
 		void postCommandBufferExecution(CommandBuffer* pCommandBuffer) override;
 		void frameEnded(void) override;
 		void calculateHashForPreCreate(Renderable* pRenderable, PiecesMap* pInOutPieces) override;
-		void calculateHashForPreCaster(Renderable* pRenderable, PiecesMap* pInOutPieces) override;
+		void calculateHashForPreCaster(Renderable* pRenderable, PiecesMap* pInOutPieces, const PiecesMap* pNormalPassPieces) override;
 		HlmsCache preparePassHash(const CompositorShadowNode* pShadowNode, bool casterPass, bool dualParaboloid, SceneManager* pSceneManager) override;
 		uint32 fillBuffersFor(const HlmsCache* pCache, const QueuedRenderable& queuedRenderable, bool casterPass, uint32 lastCacheHash, uint32 lastTextureHash) override;
 		uint32 fillBuffersForV1(const HlmsCache* pCache, const QueuedRenderable& queuedRenderable, bool casterPass, uint32 lastCacheHash, CommandBuffer* pCommandBuffer) override;

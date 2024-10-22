@@ -18,13 +18,13 @@ When enabled, the project names will be `OgreNext` instead of `Ogre`. e.g. the f
 
 | Old Name                   | New Name                       |
 |----------------------------|--------------------------------|
-| OgreMain.dll               | OgreMain.dll                   |
+| OgreMain.dll               | OgreNextMain.dll               |
 | OgreHlmsPbs.dll            | OgreNextHlmsPbs.dll            |
 | OgreHlmsUnlit.dll          | OgreNextHlmsUnlit.dll          |
 | OgreMeshLodGenerator.dll   | OgreNextMeshLodGenerator.dll   |
 | OgreOverlay.dll            | OgreNextOverlay.dll            |
 | OgreSceneFormat.dll        | OgreNextSceneFormat.dll        |
-| libOgreMain.so             | libOgreMain.so                 |
+| libOgreMain.so             | libOgreNextMain.so             |
 | libOgreHlmsPbs.so          | libOgreNextHlmsPbs.so          |
 | libOgreHlmsUnlit.so        | libOgreNextHlmsUnlit.so        |
 | libOgreMeshLodGenerator.so | libOgreNextMeshLodGenerator.so |
@@ -53,6 +53,24 @@ See [PBR / PBS Changes in 3.0](@ref PBSChangesIn30) to how make them look like t
 The piece block `LoadNormalData` got split into `LoadGeomNormalData` & `LoadNormalData` in order to support Decals in Terra.
 
 If you were overriding `LoadNormalData` in a custom piece, make sure to account for the new `LoadGeomNormalData`.
+
+## AbiCookie
+
+Creating Root changed slightly. One must now provide the Ogre::AbiCookie:
+
+```cpp
+const Ogre::AbiCookie abiCookie = Ogre::generateAbiCookie();
+mRoot = OGRE_NEW Ogre::Root( &abiCookie, pluginsPath, cfgPath,
+                         mWriteAccessFolder + "Ogre.log", windowTitle );
+```
+
+The ABI cookie is a verification step to validate the version of OgreNext your project was compiled against is the same one as the library being loaded. This includes relevant CMake options that would cause the ABI to change and cause subtle runtime corruption (e.Debug vs Release, `OGRE_BUILD_COMPONENT_PLANAR_REFLECTIONS`, `OGRE_FLEXIBILITY_LEVEL`, `OGRE_CONFIG_THREAD_PROVIDER`, etc).
+
+See Ogre::testAbiCookie for information of what to look for if the ABI cookie fails.
+
+The AbiCookie may not catch all possible ABI mismatch issues, but it will catch the most common known ones.
+
+Note that Ogre::generateAbiCookie is `FORCEINLINE` because it must see your project's settings.
 
 ## Move to C++11 and general cleanup
 

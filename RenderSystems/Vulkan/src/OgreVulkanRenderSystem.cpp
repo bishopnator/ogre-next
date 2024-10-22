@@ -1121,8 +1121,7 @@ namespace Ogre
         {
             // vkEnumerateInstanceVersion is available since Vulkan 1.1
             PFN_vkEnumerateInstanceVersion enumerateInstanceVersion =
-                (PFN_vkEnumerateInstanceVersion)vkGetInstanceProcAddr( mVkInstance,
-                                                                       "vkEnumerateInstanceVersion" );
+                (PFN_vkEnumerateInstanceVersion)vkGetInstanceProcAddr( 0, "vkEnumerateInstanceVersion" );
             if( enumerateInstanceVersion )
             {
                 uint32_t apiVersion;
@@ -2327,15 +2326,20 @@ namespace Ogre
         size_t bytesToWrite = shader->getBufferRequiredSize();
         if( shader && bytesToWrite > 0 )
         {
-            if( mCurrentAutoParamsBufferSpaceLeft < bytesToWrite )
+            OGRE_ASSERT_LOW(
+                mCurrentAutoParamsBufferSpaceLeft % mVaoManager->getConstBufferAlignment() == 0 );
+
+            size_t bytesToWriteAligned =
+                alignToNextMultiple<size_t>( bytesToWrite, mVaoManager->getConstBufferAlignment() );
+            if( mCurrentAutoParamsBufferSpaceLeft < bytesToWriteAligned )
             {
                 if( mAutoParamsBufferIdx >= mAutoParamsBuffer.size() )
                 {
                     // Ask for a coherent buffer to avoid excessive flushing. Note: VaoManager may ignore
                     // this request if the GPU can't provide coherent memory and we must flush anyway.
-                    ConstBufferPacked *constBuffer =
-                        mVaoManager->createConstBuffer( std::max<size_t>( 512u * 1024u, bytesToWrite ),
-                                                        BT_DYNAMIC_PERSISTENT_COHERENT, 0, false );
+                    ConstBufferPacked *constBuffer = mVaoManager->createConstBuffer(
+                        std::max<size_t>( 512u * 1024u, bytesToWriteAligned ),
+                        BT_DYNAMIC_PERSISTENT_COHERENT, 0, false );
                     mAutoParamsBuffer.push_back( constBuffer );
                 }
 
@@ -2344,7 +2348,7 @@ namespace Ogre
                 // This should be near-impossible to trigger because most Const Buffers are <= 64kb
                 // and we reserver 512kb per const buffer. A Low Level Material using a Params buffer
                 // with > 64kb is an edge case we don't care handling.
-                OGRE_ASSERT_LOW( bytesToWrite <= constBuffer->getTotalSizeBytes() );
+                OGRE_ASSERT_LOW( bytesToWriteAligned <= constBuffer->getTotalSizeBytes() );
 
                 mCurrentAutoParamsBufferPtr =
                     reinterpret_cast<uint8 *>( constBuffer->map( 0, constBuffer->getNumElements() ) );
@@ -2365,18 +2369,8 @@ namespace Ogre
 
             constBuffer->bindAsParamBuffer( gptype, bindOffset, bytesToWrite );
 
-            mCurrentAutoParamsBufferPtr += bytesToWrite;
-
-            const uint8 *oldBufferPos = mCurrentAutoParamsBufferPtr;
-            mCurrentAutoParamsBufferPtr = reinterpret_cast<uint8 *>(
-                alignToNextMultiple<size_t>( reinterpret_cast<uintptr_t>( mCurrentAutoParamsBufferPtr ),
-                                             mVaoManager->getConstBufferAlignment() ) );
-            bytesToWrite += (size_t)( mCurrentAutoParamsBufferPtr - oldBufferPos );
-
-            // We know that bytesToWrite <= mCurrentAutoParamsBufferSpaceLeft, but that was
-            // before padding. After padding this may no longer hold true.
-            mCurrentAutoParamsBufferSpaceLeft -=
-                std::min( mCurrentAutoParamsBufferSpaceLeft, bytesToWrite );
+            mCurrentAutoParamsBufferPtr += bytesToWriteAligned;
+            mCurrentAutoParamsBufferSpaceLeft -= bytesToWriteAligned;
         }
     }
     //-------------------------------------------------------------------------
@@ -3086,20 +3080,28 @@ namespace Ogre
                 if( texture->isMultisample() && !texture->hasMsaaExplicitResolves() )
                 {
                     // Rare case where we render to an implicit resolve without resolving
-                    // (otherwise newLayout = ResolveDest)
-                    //
-                    // Or more common case if we need to copy to/from an MSAA texture
+                    // (otherwise newLayout = ResolveDest), or more common case if we need
+                    // to copy to/from an MSAA texture. We can also try to sample from texture.
+                    // In all these cases keep MSAA texture in predictable layout.
                     //
                     // This cannot catch all use cases, but if you fall into something this
                     // doesn't catch, then you should probably be using explicit resolves
-                    if( itor->newLayout == ResourceLayout::RenderTarget ||
-                        itor->newLayout == ResourceLayout::ResolveDest ||
-                        itor->newLayout == ResourceLayout::CopySrc ||
-                        itor->newLayout == ResourceLayout::CopyDst )
-                    {
-                        imageBarrier.image = texture->getMsaaFramebufferName();
-                        mImageBarriers.push_back( imageBarrier );
-                    }
+                    bool useNewLayoutForMsaa =
+                            itor->newLayout == ResourceLayout::RenderTarget ||
+                            itor->newLayout == ResourceLayout::ResolveDest ||
+                            itor->newLayout == ResourceLayout::CopySrc ||
+                            itor->newLayout == ResourceLayout::CopyDst;
+                    bool useOldLayoutForMsaa =
+                            itor->oldLayout == ResourceLayout::RenderTarget ||
+                            itor->oldLayout == ResourceLayout::ResolveDest ||
+                            itor->oldLayout == ResourceLayout::CopySrc ||
+                            itor->oldLayout == ResourceLayout::CopyDst;
+                    if( !useNewLayoutForMsaa )
+                        imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                    if( !useOldLayoutForMsaa )
+                        imageBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                    imageBarrier.image = texture->getMsaaFramebufferName();
+                    mImageBarriers.push_back( imageBarrier );
                 }
             }
             else

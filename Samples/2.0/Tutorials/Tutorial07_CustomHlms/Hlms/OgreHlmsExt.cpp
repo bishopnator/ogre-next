@@ -41,7 +41,7 @@ HlmsExt::HlmsExt(HlmsTypes type, const String& typeName, Archive* pDataFolder, A
 						auto pData = pLibraryFolder->open(header);
 						m_HeaderFiles[header] = pData->getAsString();
 					}
-					catch (const Ogre::Exception& e)
+					catch (const Ogre::Exception&)
 					{
 						LogManager::getSingleton().logMessage("The header file '" + header + "' from '" + pLibraryFolder->getName() + "' cannot be loaded.");
 					}
@@ -170,9 +170,9 @@ void HlmsExt::calculateHashForPreCreate(Renderable* pRenderable, PiecesMap* pInO
 }
 
 //////////////////////////////////////////////////////////////////////////
-void HlmsExt::calculateHashForPreCaster(Renderable* pRenderable, PiecesMap* pInOutPieces)
+void HlmsExt::calculateHashForPreCaster(Renderable* pRenderable, PiecesMap* pInOutPieces, const PiecesMap* pNormalPassPieces)
 {
-	Hlms::calculateHashForPreCaster(pRenderable, pInOutPieces);
+	Hlms::calculateHashForPreCaster(pRenderable, pInOutPieces, pNormalPassPieces);
 
 	// inject header files
 	for( int k = 0; k < NumShaderTypes; ++k )

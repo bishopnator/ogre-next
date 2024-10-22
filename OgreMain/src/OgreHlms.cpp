@@ -2253,12 +2253,16 @@ namespace Ogre
 
                     if( mDebugOutputProperties )
                         dumpProperties( debugDumpFile );
-
-                    debugDumpFile.write(source[i].c_str(), source[i].size() );
                 }
 
                 codeCache.shaders[i] =
                     compileShaderCode( source[i], debugFilenameOutput, finalHash, static_cast<ShaderType>( i ) );
+
+                if( mDebugOutput )
+                {
+                    debugDumpFile.write( source[i].c_str(),
+                                         static_cast<std::streamsize>( source[i].size() ) );
+                }
             }
         }
 
@@ -2706,7 +2710,7 @@ namespace Ogre
             VertexArrayObject *vao = renderable->getVaos( VpShadow )[0];
             setProperty( HlmsPsoProp::InputLayoutId, vao->getInputLayoutId() );
         }
-        calculateHashForPreCaster( renderable, piecesCaster );
+        calculateHashForPreCaster( renderable, piecesCaster, pieces );
         setProperty( HlmsPsoProp::Macroblock,
                      renderable->getDatablock()->getMacroblock( true )->mLifetimeId );
         setProperty( HlmsPsoProp::Blendblock,
