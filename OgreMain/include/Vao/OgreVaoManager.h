@@ -42,6 +42,8 @@ namespace Ogre
     typedef vector<StagingBuffer *>::type            StagingBufferVec;
     typedef unordered_set<VertexArrayObject *>::type VertexArrayObjectSet;
 
+    class RootLayoutDefinition;
+
     class _OgreExport VaoManager : public OgreAllocatedObj
     {
     protected:
@@ -273,6 +275,11 @@ namespace Ogre
 
         /// Frees GPU memory if there are empty, unused pools
         virtual void cleanupEmptyPools() = 0;
+
+        /// Creates a RootLayoutDefinition
+        virtual RootLayoutDefinitionPtr createRootLayoutDefinition() = 0;
+
+        /// Get the binding slot for the given buffer
 
         /// Returns the size of a single vertex buffer source with the given declaration, in bytes
         static uint32 calculateVertexSize( const VertexElement2Vec &vertexElements );

@@ -287,6 +287,7 @@ namespace Ogre
                              size_t &outFreeBytes, Log *log, bool &outIncludesTextures ) const override;
 
         void cleanupEmptyPools() override;
+        RootLayoutDefinitionPtr createRootLayoutDefinition() override;
 
         D3D11RenderSystem *getD3D11RenderSystem() const { return mD3D11RenderSystem; }
         D3D11Device       &getDevice() const { return mDevice; }

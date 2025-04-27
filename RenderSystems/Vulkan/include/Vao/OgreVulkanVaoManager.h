@@ -517,6 +517,7 @@ namespace Ogre
                              size_t &outFreeBytes, Log *log, bool &outIncludesTextures ) const override;
 
         void cleanupEmptyPools() override;
+        RootLayoutDefinitionPtr createRootLayoutDefinition() override;
 
         bool supportsCoherentMapping() const;
         bool supportsNonCoherentMapping() const;

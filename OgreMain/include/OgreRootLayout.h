@@ -54,6 +54,7 @@ namespace Ogre
         uint16 start;  // Inclusive
         uint16 end;    // Exclusive
         DescBindingRange();
+        DescBindingRange(uint16 _start, uint16 _end);
 
         uint32 getNumUsedSlots() const { return end - start; }
 

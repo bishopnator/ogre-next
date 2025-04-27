@@ -263,6 +263,7 @@ namespace Ogre
                              size_t &outFreeBytes, Log *log, bool &outIncludesTextures ) const override;
 
         void cleanupEmptyPools() override;
+        RootLayoutDefinitionPtr createRootLayoutDefinition() override;
 
         /// Binds the Draw ID to the currently bound vertex array object.
         void bindDrawId();

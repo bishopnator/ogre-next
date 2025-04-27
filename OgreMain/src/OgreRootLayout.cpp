@@ -74,6 +74,8 @@ namespace Ogre
     //-------------------------------------------------------------------------
     DescBindingRange::DescBindingRange() : start( 0u ), end( 0u ) {}
     //-------------------------------------------------------------------------
+    DescBindingRange::DescBindingRange( uint16 _start, uint16 _end ) : start( _start ), end( _end ) {}
+    //-------------------------------------------------------------------------
     RootLayout::RootLayout() : mCompute( false ), mParamsBuffStages( 0u )
     {
         memset( mBaked, 0, sizeof( mBaked ) );

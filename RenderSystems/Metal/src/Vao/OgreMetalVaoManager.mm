@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include "Vao/OgreMetalVaoManager.h"
 #include "Vao/OgreMetalBufferInterface.h"
 #include "Vao/OgreMetalConstBufferPacked.h"
+#include "Vao/OgreMetalRootLayoutDefinition.h"
 #include "Vao/OgreMetalStagingBuffer.h"
 #include "Vao/OgreMetalTexBufferPacked.h"
 #include "Vao/OgreMetalUavBufferPacked.h"
@@ -487,6 +488,11 @@ namespace Ogre
                 }
             }
         }
+    }
+    //-----------------------------------------------------------------------------------
+    RootLayoutDefinitionPtr MetalVaoManager::createRootLayoutDefinition()
+    {
+        return RootLayoutDefinitionPtr( OGRE_NEW MetalRootLayoutDefinition() );
     }
     //-----------------------------------------------------------------------------------
     void MetalVaoManager::allocateVbo( size_t sizeBytes, size_t alignment, BufferType bufferType,

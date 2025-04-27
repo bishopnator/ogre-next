@@ -32,6 +32,7 @@ THE SOFTWARE.
 #include "OgreVulkanDevice.h"
 #include "OgreVulkanRenderSystem.h"
 #include "OgreVulkanRootLayout.h"
+#include "OgreVulkanRootLayoutDefinition.h"
 #include "OgreVulkanUtils.h"
 #include "Vao/OgreVertexArrayObject.h"
 #include "Vao/OgreVulkanAsyncTicket.h"
@@ -621,6 +622,11 @@ namespace Ogre
                 }
             }
         }
+    }
+    //-----------------------------------------------------------------------------------
+    RootLayoutDefinitionPtr VulkanVaoManager::createRootLayoutDefinition()
+    {
+        return RootLayoutDefinitionPtr( OGRE_NEW VulkanRootLayoutDefinition();
     }
     //-----------------------------------------------------------------------------------
     bool VulkanVaoManager::supportsCoherentMapping() const { return mSupportsCoherentMemory; }

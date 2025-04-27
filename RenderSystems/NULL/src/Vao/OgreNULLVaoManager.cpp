@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include "Vao/OgreNULLAsyncTicket.h"
 #include "Vao/OgreNULLBufferInterface.h"
 #include "Vao/OgreNULLConstBufferPacked.h"
+#include "Vao/OgreNULLRootLayoutDefinition.h"
 #include "Vao/OgreNULLStagingBuffer.h"
 #include "Vao/OgreNULLTexBufferPacked.h"
 #include "Vao/OgreNULLUavBufferPacked.h"
@@ -83,6 +84,11 @@ namespace Ogre
     }
     //-----------------------------------------------------------------------------------
     void NULLVaoManager::cleanupEmptyPools() {}
+    //-----------------------------------------------------------------------------------
+    RootLayoutDefinitionPtr NULLVaoManager::createRootLayoutDefinition()
+    {
+        return RootLayoutDefinitionPtr( OGRE_NEW NULLRootLayoutDefinition() );
+    }
     //-----------------------------------------------------------------------------------
     VertexBufferPacked *NULLVaoManager::createVertexBufferImpl( size_t numElements,
                                                                 uint32 bytesPerElement,

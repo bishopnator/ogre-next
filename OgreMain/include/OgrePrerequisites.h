@@ -289,6 +289,7 @@ namespace Ogre
     class ResourceManager;
     class Root;
     class RootLayout;
+    class RootLayoutDefinition;
     class SceneManager;
     class SceneManagerEnumerator;
     class SceneNode;
@@ -359,6 +360,7 @@ namespace Ogre
     typedef SharedPtr<MemoryDataStream>       MemoryDataStreamPtr;
     typedef SharedPtr<Mesh>                   MeshPtr;
     typedef SharedPtr<Resource>               ResourcePtr;
+    typedef SharedPtr<RootLayoutDefinition>   RootLayoutDefinitionPtr;
     typedef SharedPtr<ShadowCameraSetup>      ShadowCameraSetupPtr;
     typedef SharedPtr<SkeletonDef>            SkeletonDefPtr;
 

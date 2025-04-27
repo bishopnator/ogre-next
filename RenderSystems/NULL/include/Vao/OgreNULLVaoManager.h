@@ -193,6 +193,7 @@ namespace Ogre
                              size_t &outFreeBytes, Log *log, bool &outIncludesTextures ) const override;
 
         void cleanupEmptyPools() override;
+        RootLayoutDefinitionPtr createRootLayoutDefinition() override;
 
         bool supportsArbBufferStorage() const { return false; }
 

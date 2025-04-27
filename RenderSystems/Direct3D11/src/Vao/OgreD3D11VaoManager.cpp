@@ -46,6 +46,7 @@ THE SOFTWARE.
 #include "Vao/OgreD3D11ConstBufferPacked.h"
 #include "Vao/OgreD3D11DynamicBuffer.h"
 #include "Vao/OgreD3D11ReadOnlyBufferPacked.h"
+#include "Vao/OgreD3D11RootLayoutDefinition.h"
 #include "Vao/OgreD3D11StagingBuffer.h"
 #include "Vao/OgreD3D11TexBufferPacked.h"
 #include "Vao/OgreD3D11UavBufferPacked.h"
@@ -441,6 +442,11 @@ namespace Ogre
                 }
             }
         }
+    }
+    //-----------------------------------------------------------------------------------
+    RootLayoutDefinitionPtr D3D11VaoManager::createRootLayoutDefinition()
+    {
+        return RootLayoutDefinitionPtr( OGRE_NEW D3D11RootLayoutDefinition() );
     }
     //-----------------------------------------------------------------------------------
     void D3D11VaoManager::allocateVbo( size_t sizeBytes, size_t alignment, BufferType bufferType,

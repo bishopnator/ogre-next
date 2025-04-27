@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "Vao/OgreGL3PlusBufferInterface.h"
 #include "Vao/OgreGL3PlusConstBufferPacked.h"
 #include "Vao/OgreGL3PlusReadOnlyBufferPacked.h"
+#include "Vao/OgreGL3PlusRootLayoutDefinition.h"
 #include "Vao/OgreGL3PlusStagingBuffer.h"
 #include "Vao/OgreGL3PlusTexBufferEmulatedPacked.h"
 #include "Vao/OgreGL3PlusTexBufferPacked.h"
@@ -433,6 +434,11 @@ namespace Ogre
             OCGE( glDeleteBuffers( (GLsizei)bufferNames.size(), &bufferNames[0] ) );
             bufferNames.clear();
         }
+    }
+    //-----------------------------------------------------------------------------------
+    RootLayoutDefinitionPtr GL3PlusVaoManager::createRootLayoutDefinition()
+    {
+        return RootLayoutDefinitionPtr( OGRE_NEW GL3PlusRootLayoutDefinition() );
     }
     //-----------------------------------------------------------------------------------
     void GL3PlusVaoManager::allocateVbo( size_t sizeBytes, size_t alignment, BufferType bufferType,

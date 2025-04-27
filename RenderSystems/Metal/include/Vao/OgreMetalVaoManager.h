@@ -276,6 +276,7 @@ namespace Ogre
                              size_t &outFreeBytes, Log *log, bool &outIncludesTextures ) const override;
 
         void cleanupEmptyPools() override;
+        RootLayoutDefinitionPtr createRootLayoutDefinition() override;
 
         /// Binds the Draw ID to the current RenderEncoder. (Assumed to be active!)
         void bindDrawId();
