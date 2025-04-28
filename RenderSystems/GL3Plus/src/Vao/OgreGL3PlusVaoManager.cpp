@@ -438,7 +438,7 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     RootLayoutDefinitionPtr GL3PlusVaoManager::createRootLayoutDefinition()
     {
-        return RootLayoutDefinitionPtr( OGRE_NEW GL3PlusRootLayoutDefinition() );
+        return RootLayoutDefinitionPtr( OGRE_NEW GL3PlusRootLayoutDefinition( mReadOnlyIsTexBuffer, mEmulateTexBuffers ) );
     }
     //-----------------------------------------------------------------------------------
     void GL3PlusVaoManager::allocateVbo( size_t sizeBytes, size_t alignment, BufferType bufferType,

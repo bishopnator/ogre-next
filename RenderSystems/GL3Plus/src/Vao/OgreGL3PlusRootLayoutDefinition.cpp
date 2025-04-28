@@ -28,16 +28,77 @@ THE SOFTWARE.
 
 #include "Vao/OgreGL3PlusRootLayoutDefinition.h"
 
-#include "OgreException.h"
-
 namespace Ogre
 {
     //-----------------------------------------------------------------------------------
-    GL3PlusRootLayoutDefinition::GL3PlusRootLayoutDefinition() {}
+    GL3PlusRootLayoutDefinition::GL3PlusRootLayoutDefinition( bool readOnlyIsTexBuffer,
+                                                              bool emulateTexBuffers ) :
+        mReadOnlyIsTexBuffer( readOnlyIsTexBuffer ),
+        mEmulateTexBuffers( emulateTexBuffers )
+    {
+    }
     //-----------------------------------------------------------------------------------
     RootLayout GL3PlusRootLayoutDefinition::createRootLayout()
     {
-        OGRE_EXCEPT( Exception::ERR_NOT_IMPLEMENTED, "Not implemented!",
-                     "GL3PlusRootLayoutDefinition::createRootLayout" );
+        // GL_UNIFORM_BUFFER: ParamBuffer, ConstBuffer
+        // GL_TEXTURE_BUFFER/GL_TEXTURE/GL_SHADER_STORAGE_BUFFER : ReadOnlyBuffer
+        // GL_TEXTURE_BUFFER/GL_TEXTURE : TexBuffer
+        // GL_SHADER_STORAGE_BUFFER: UavBuffer, UavTexture
+        // GL_TEXTURE: Texture
+        // GL_SAMPLER: Sampler
+        uint16 ssboCounter = 0;
+        uint16 uniformBufferCounter = 0;
+        uint16 textureBufferCounter = 0;
+        uint16 textureCounter = 0;
+        uint16 samplerCounter = 0;
+
+        RootLayout rootLayout;
+        copyCommonAttributes( rootLayout );
+
+        // add ParamBuffer, ConstBuffer bindings
+        translateBindings( rootLayout, uniformBufferCounter, DescBindingTypes::ParamBuffer );
+        translateBindings( rootLayout, uniformBufferCounter, DescBindingTypes::ConstBuffer );
+
+        // add ReadOnlyBuffer bindings
+        if (!mReadOnlyIsTexBuffer)
+        {
+            // ReadOnlyBuffer as GL3PlusReadOnlyUavBufferPacked --> GL_SHADER_STORAGE_BUFFER
+            translateBindings( rootLayout, ssboCounter, DescBindingTypes::ReadOnlyBuffer );
+        }
+        else if (!mEmulateTexBuffers)
+        {
+            // ReadOnlyBuffer as GL3PlusReadOnlyTexBufferPacked --> GL_TEXTURE_BUFFER
+            translateBindings( rootLayout, textureBufferCounter, DescBindingTypes::ReadOnlyBuffer );
+        }
+        else
+        {
+            // ReadOnlyBuffer as GL3PlusReadOnlyBufferEmulatedPacked --> (GL_TEXTURE0 + slot)
+            translateBindings( rootLayout, textureCounter, DescBindingTypes::ReadOnlyBuffer );
+        }
+
+        // add TexBuffer bindings
+        if (!mEmulateTexBuffers)
+        {
+            // TexBuffer as GL3PlusTexBufferPacked --> GL_TEXTURE_BUFFER
+            translateBindings( rootLayout, textureBufferCounter, DescBindingTypes::TexBuffer );
+        }
+        else
+        {
+            // TexBuffer as GL3PlusTexBufferEmulatedPacked --> (GL_TEXTURE0 + slot)
+            translateBindings( rootLayout, textureCounter, DescBindingTypes::TexBuffer );
+        }
+
+        // add UavBuffer, UavTexture bindings
+        translateBindings( rootLayout, ssboCounter, DescBindingTypes::TexBuffer );
+        translateBindings( rootLayout, ssboCounter, DescBindingTypes::UavBuffer );
+        translateBindings( rootLayout, ssboCounter, DescBindingTypes::UavTexture );
+
+        // add Texture bindings
+        translateBindings( rootLayout, textureCounter, DescBindingTypes::Texture );
+
+        // add Sampler bindings
+        translateBindings( rootLayout, samplerCounter, DescBindingTypes::Sampler );
+
+        return rootLayout;
     }
 }  // namespace Ogre

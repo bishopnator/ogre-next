@@ -35,14 +35,23 @@ namespace Ogre
     {
     protected:
         RootLayout  mDefinition;
+        FastArray<uint16> mTranslatedSlots[DescBindingTypes::NumDescBindingTypes];
 
         using ArrayDesc = RootLayout::ArrayDesc;
+
+    protected:
+        void copyCommonAttributes( RootLayout &rootLayout );
+        void translateBindings( RootLayout &rootLayout, uint16 &slot,
+                                DescBindingTypes::DescBindingTypes bindingType );
 
     public:
         RootLayoutDefinition();
 
         /// Convert this definition to a RootLayout suitable by RenderSystem
         virtual RootLayout createRootLayout() = 0;
+
+        /// Get a binding slot for the given type of the buffer and its "virtual" slot.
+        uint16 getBindingSlot( DescBindingTypes::DescBindingTypes bindingType, uint16 slot ) const;
 
         /// Set binding range for the given set and binding type.
         void setBinding( const size_t setIdx, DescBindingTypes::DescBindingTypes bindingType,

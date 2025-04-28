@@ -28,8 +28,6 @@ THE SOFTWARE.
 
 #include "Vao/OgreD3D11RootLayoutDefinition.h"
 
-#include "OgreException.h"
-
 namespace Ogre
 {
     //-----------------------------------------------------------------------------------
@@ -37,7 +35,33 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     RootLayout D3D11RootLayoutDefinition::createRootLayout()
     {
-        OGRE_EXCEPT( Exception::ERR_NOT_IMPLEMENTED, "Not implemented!",
-                     "D3D11RootLayoutDefinition::createRootLayout" );
+        // bx: ParamBuffer, ConstBuffer
+        // tx: ReadOnlyBuffer, TexBuffer, Texture
+        // sx: Sampler
+        // ux: UavBuffer, UavTexture
+        RootLayout rootLayout;
+        copyCommonAttributes( rootLayout );
+
+        // add ParamBuffer, ConstBuffer bindings
+        uint16 bcounter = 0;
+        translateBindings( rootLayout, bcounter, DescBindingTypes::ParamBuffer );
+        translateBindings( rootLayout, bcounter, DescBindingTypes::ConstBuffer );
+
+        // add ReadOnlyBuffer, TexBuffer, Texture bindings
+        uint16 tcounter = 0;
+        translateBindings( rootLayout, tcounter, DescBindingTypes::ReadOnlyBuffer );
+        translateBindings( rootLayout, tcounter, DescBindingTypes::TexBuffer );
+        translateBindings( rootLayout, tcounter, DescBindingTypes::Texture );
+
+        // add Sampler bindings
+        uint16 scounter = 0;
+        translateBindings( rootLayout, scounter, DescBindingTypes::Sampler );
+
+        // add UavBuffer, UavTexture bindings
+        uint16 ucounter = 0; // u-register is shared with color binding in pixel shader and ogre updates the actual start index when it binds the UAV buffers
+        translateBindings( rootLayout, ucounter, DescBindingTypes::UavBuffer );
+        translateBindings( rootLayout, ucounter, DescBindingTypes::UavTexture );
+
+        return rootLayout;
     }
 }  // namespace Ogre

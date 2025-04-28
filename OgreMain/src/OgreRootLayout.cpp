@@ -488,6 +488,17 @@ namespace Ogre
         mArrayRanges[bindingType].push_back( arrayDesc.toKey() );
     }
     //-------------------------------------------------------------------------
+    size_t RootLayout::getNumArrayBindings( DescBindingTypes::DescBindingTypes bindingType ) const
+    {
+        return mArrayRanges[bindingType].size();
+    }
+    //-------------------------------------------------------------------------
+    RootLayout::ArrayDesc RootLayout::getArrayBinding( DescBindingTypes::DescBindingTypes bindingType,
+                                                       size_t index ) const
+    {
+        return ArrayDesc::fromKey( mArrayRanges[bindingType][index] );
+    }
+    //-------------------------------------------------------------------------
     void RootLayout::copyFrom( const RootLayout &other, bool bIncludeArrayBindings )
     {
         this->mCompute = other.mCompute;

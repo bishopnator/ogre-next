@@ -37,8 +37,12 @@ namespace Ogre
 {
     class _OgreGL3PlusExport GL3PlusRootLayoutDefinition : public RootLayoutDefinition
     {
+    private:
+        const bool mReadOnlyIsTexBuffer;
+        const bool mEmulateTexBuffers;
+
     public:
-        GL3PlusRootLayoutDefinition();
+        explicit GL3PlusRootLayoutDefinition( bool readOnlyIsTexBuffer, bool emulateTexBuffers );
         RootLayout createRootLayout() override;
     };
 }  // namespace Ogre

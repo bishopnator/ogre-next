@@ -34,6 +34,13 @@ namespace Ogre
     //-------------------------------------------------------------------------
     RootLayoutDefinition::RootLayoutDefinition() {}
     //-------------------------------------------------------------------------
+    uint16 RootLayoutDefinition::getBindingSlot( DescBindingTypes::DescBindingTypes bindingType,
+                                                 uint16 slot ) const
+    {
+        OGRE_ASSERT_LOW( slot < mTranslatedSlots[bindingType].size() );
+        return mTranslatedSlots[bindingType][slot];
+    }
+    //-------------------------------------------------------------------------
     void RootLayoutDefinition::setBinding( const size_t setIdx,
                                            DescBindingTypes::DescBindingTypes bindingType,
                                            const DescBindingRange &descBindingRange )
@@ -72,5 +79,56 @@ namespace Ogre
     bool RootLayoutDefinition::isBaked( const size_t setIdx ) const
     {
         return mDefinition.mBaked[setIdx];
+    }
+    //-----------------------------------------------------------------------------------
+    void RootLayoutDefinition::copyCommonAttributes( RootLayout &rootLayout )
+    {
+        rootLayout.mCompute = mDefinition.mCompute;
+        rootLayout.mParamsBuffStages = mDefinition.mParamsBuffStages;
+        for( size_t k = 0; k < OGRE_MAX_NUM_BOUND_DESCRIPTOR_SETS; ++k )
+            rootLayout.mBaked[k] = mDefinition.mBaked[k];
+    }
+    //-----------------------------------------------------------------------------------
+    void RootLayoutDefinition::translateBindings( RootLayout &rootLayout, uint16 &slot,
+                                                  DescBindingTypes::DescBindingTypes bindingType )
+    {
+        // prepare translated slots
+        size_t maxSlot = 0;
+        for( size_t k = 0; k < OGRE_MAX_NUM_BOUND_DESCRIPTOR_SETS; ++k )
+        {
+            const DescBindingRange &bindingRange = mDefinition.mDescBindingRanges[k][bindingType];
+            if( maxSlot < bindingRange.end )
+                maxSlot = bindingRange.end;
+        }
+        mTranslatedSlots[bindingType].resize( maxSlot, 0xffff );
+
+        for( size_t k = 0; k < OGRE_MAX_NUM_BOUND_DESCRIPTOR_SETS; ++k )
+        {
+            const DescBindingRange &bindingRange = mDefinition.mDescBindingRanges[k][bindingType];
+            if( bindingRange.isInUse() )
+            {
+                // add binding range
+                const uint16 count = bindingRange.end - bindingRange.start;
+                rootLayout.mDescBindingRanges[k][bindingType] = DescBindingRange( slot, slot + count );
+
+                for( uint16 i = bindingRange.start; i < bindingRange.end; ++i )
+                    mTranslatedSlots[bindingType][i] = slot + i - bindingRange.start;
+
+                // add ParamBuffer array bindings
+                for( size_t k = 0; k < mDefinition.getNumArrayBindings( bindingType ); ++k )
+                {
+                    const ArrayDesc arrayDesc = mDefinition.getArrayBinding( bindingType, k );
+                    if( arrayDesc.bindingIdx >= bindingRange.start &&
+                        arrayDesc.bindingIdx + arrayDesc.arraySize <= bindingRange.end )
+                    {
+                        rootLayout.addArrayBinding(
+                            bindingType, ArrayDesc( slot + arrayDesc.bindingIdx - bindingRange.start,
+                                                    arrayDesc.arraySize ) );
+                    }
+                }
+
+                slot += count;
+            }
+        }
     }
 }  // namespace Ogre

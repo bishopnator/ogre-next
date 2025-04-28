@@ -447,6 +447,12 @@ namespace Ogre
         */
         void addArrayBinding( DescBindingTypes::DescBindingTypes bindingType, ArrayDesc arrayDesc );
 
+        /// Get number of array bindings
+        size_t getNumArrayBindings( DescBindingTypes::DescBindingTypes bindingType ) const;
+
+        /// Get array binding at the index
+        ArrayDesc getArrayBinding( DescBindingTypes::DescBindingTypes bindingType, size_t index ) const;
+
         /** Copies all our parameters from 'other'
             Does NOT call validate()
         @param other
