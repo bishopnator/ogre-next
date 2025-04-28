@@ -40,4 +40,10 @@ namespace Ogre
         OGRE_EXCEPT( Exception::ERR_NOT_IMPLEMENTED, "Not implemented!",
                      "MetalRootLayoutDefinition::createRootLayout" );
     }
+    //-----------------------------------------------------------------------------------
+    String MetalRootLayoutDefinition::createShaderPreprocessorDefinitions() const
+    {
+        OGRE_EXCEPT( Exception::ERR_NOT_IMPLEMENTED, "Not implemented!",
+                     "MetalRootLayoutDefinition::createShaderPreprocessorDefinitions" );
+    }
 }  // namespace Ogre

@@ -40,4 +40,10 @@ namespace Ogre
         OGRE_EXCEPT( Exception::ERR_NOT_IMPLEMENTED, "Not implemented!",
                      "VulkanRootLayoutDefinition::createRootLayout" );
     }
+    //-----------------------------------------------------------------------------------
+    String VulkanRootLayoutDefinition::createShaderPreprocessorDefinitions() const
+    {
+        OGRE_EXCEPT( Exception::ERR_NOT_IMPLEMENTED, "Not implemented!",
+                     "VulkanRootLayoutDefinition::createShaderPreprocessorDefinitions" );
+    }
 }  // namespace Ogre

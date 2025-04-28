@@ -40,6 +40,7 @@ namespace Ogre
     public:
         NULLRootLayoutDefinition();
         RootLayout createRootLayout() override;
+        String     createShaderPreprocessorDefinitions() const override;
     };
 }  // namespace Ogre
 #endif

@@ -40,6 +40,7 @@ namespace Ogre
     public:
         D3D11RootLayoutDefinition();
         RootLayout createRootLayout() override;
+        String createShaderPreprocessorDefinitions() const override;
     };
 }  // namespace Ogre
 #endif

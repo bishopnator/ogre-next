@@ -28,6 +28,9 @@ THE SOFTWARE.
 
 #include "Vao/OgreD3D11RootLayoutDefinition.h"
 
+#include "OgreLwString.h"
+#include "OgreRoot.h"
+
 namespace Ogre
 {
     //-----------------------------------------------------------------------------------
@@ -58,10 +61,42 @@ namespace Ogre
         translateBindings( rootLayout, scounter, DescBindingTypes::Sampler );
 
         // add UavBuffer, UavTexture bindings
-        uint16 ucounter = 0; // u-register is shared with color binding in pixel shader and ogre updates the actual start index when it binds the UAV buffers
+        uint16 ucounter = 0;  // u-register is shared with color binding in pixel shader and ogre updates
+                              // the actual start index when it binds the UAV buffers
         translateBindings( rootLayout, ucounter, DescBindingTypes::UavBuffer );
         translateBindings( rootLayout, ucounter, DescBindingTypes::UavTexture );
 
         return rootLayout;
+    }
+    //-----------------------------------------------------------------------------------
+    String D3D11RootLayoutDefinition::createShaderPreprocessorDefinitions() const
+    {
+        char buffer[1024];
+        LwString out( buffer, 1024 );
+
+        const auto appendPreprocessor = [this, &out]( DescBindingTypes::DescBindingTypes bindingType,
+                                                      const char *baseName, const char *registerName,
+                                                      uint16 offset = 0 ) {
+            for( size_t k = 0; k < mTranslatedSlots[bindingType].size(); ++k )
+            {
+                if( mTranslatedSlots[bindingType][k] != 0xffff )
+                    out.a( "#define ", baseName, k, registerName,
+                           offset + mTranslatedSlots[bindingType][k], "\n" );
+            }
+        };
+
+        appendPreprocessor( DescBindingTypes::ParamBuffer, "ogre_param_buffer_", " b" );
+        appendPreprocessor( DescBindingTypes::ConstBuffer, "ogre_const_buffer_", " b" );
+        appendPreprocessor( DescBindingTypes::ReadOnlyBuffer, "ogre_read_only_buffer_", " t" );
+        appendPreprocessor( DescBindingTypes::TexBuffer, "ogre_tex_buffer_", " t" );
+        appendPreprocessor( DescBindingTypes::Texture, "ogre_texture_", " t" );
+        appendPreprocessor( DescBindingTypes::Sampler, "ogre_sampler_", " s" );
+
+        // uav buffers are bound after the color targets - e.g. if shader outputs 2 colors, the first uav buffer is bound to u2 (u0 and u1 are used by colors)
+        const uint8 numColorEntries = Root::getSingleton().getRenderSystem()->getCurrentPassDescriptor()->getNumColourEntries();
+        appendPreprocessor( DescBindingTypes::UavBuffer, "ogre_uav_buffer_", " u", numColorEntries );
+        appendPreprocessor( DescBindingTypes::UavTexture, "ogre_uav_texture_", " u", numColorEntries );
+
+        return buffer;
     }
 }  // namespace Ogre

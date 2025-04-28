@@ -28,6 +28,8 @@ THE SOFTWARE.
 
 #include "Vao/OgreGL3PlusRootLayoutDefinition.h"
 
+#include "OgreLwString.h"
+
 namespace Ogre
 {
     //-----------------------------------------------------------------------------------
@@ -100,5 +102,32 @@ namespace Ogre
         translateBindings( rootLayout, samplerCounter, DescBindingTypes::Sampler );
 
         return rootLayout;
+    }
+    //-----------------------------------------------------------------------------------
+    String GL3PlusRootLayoutDefinition::createShaderPreprocessorDefinitions() const
+    {
+        char buffer[1024];
+        LwString out( buffer, 1024 );
+
+        const auto appendPreprocessor = [this, &out]( DescBindingTypes::DescBindingTypes bindingType,
+                                                      const char *baseName ) {
+            for( size_t k = 0; k < mTranslatedSlots[bindingType].size(); ++k )
+            {
+                if( mTranslatedSlots[bindingType][k] != 0xffff )
+                    out.a( "#define ", baseName, k, mTranslatedSlots[bindingType][k],
+                           "\n" );
+            }
+        };
+
+        appendPreprocessor( DescBindingTypes::ParamBuffer, "ogre_param_buffer_" );
+        appendPreprocessor( DescBindingTypes::ConstBuffer, "ogre_const_buffer_" );
+        appendPreprocessor( DescBindingTypes::ReadOnlyBuffer, "ogre_read_only_buffer_" );
+        appendPreprocessor( DescBindingTypes::TexBuffer, "ogre_tex_buffer_" );
+        appendPreprocessor( DescBindingTypes::Texture, "ogre_texture_" );
+        appendPreprocessor( DescBindingTypes::Sampler, "ogre_sampler_" );
+        appendPreprocessor( DescBindingTypes::UavBuffer, "ogre_uav_buffer_" );
+        appendPreprocessor( DescBindingTypes::UavTexture, "ogre_uav_texture_" );
+
+        return buffer;
     }
 }  // namespace Ogre

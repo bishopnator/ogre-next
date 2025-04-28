@@ -44,6 +44,7 @@ namespace Ogre
     public:
         explicit GL3PlusRootLayoutDefinition( bool readOnlyIsTexBuffer, bool emulateTexBuffers );
         RootLayout createRootLayout() override;
+        String     createShaderPreprocessorDefinitions() const override;
     };
 }  // namespace Ogre
 #endif

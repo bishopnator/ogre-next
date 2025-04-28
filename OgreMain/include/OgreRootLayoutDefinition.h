@@ -50,6 +50,20 @@ namespace Ogre
         /// Convert this definition to a RootLayout suitable by RenderSystem
         virtual RootLayout createRootLayout() = 0;
 
+        /// Get the preprocessor definitions for the shaders
+        /// ParamBuffer    --> ogre_param_buffer_n
+        /// ConstBuffer    --> ogre_const_buffer_n
+        /// ReadOnlyBuffer --> ogre_read_only_buffer_n
+        /// TexBuffer      --> ogre_tex_buffer_n
+        /// Texture        --> ogre_texture_n
+        /// UavBuffer      --> ogre_uav_buffer_n
+        /// UavTexture     --> ogre_uav_texture_n
+        ///
+        /// n is replaced with all referenced slots. If getBindingSlot(0,
+        /// DescBindingTypes::ReadOnlyBuffer, DescBindingRange(4, 6)) is called, then only
+        /// ogre_read_only_buffer_4, ogre_read_only_buffer_5 and ogre_read_only_buffer_6 are defined
+        virtual String createShaderPreprocessorDefinitions() const = 0;
+
         /// Get a binding slot for the given type of the buffer and its "virtual" slot.
         uint16 getBindingSlot( DescBindingTypes::DescBindingTypes bindingType, uint16 slot ) const;
 
