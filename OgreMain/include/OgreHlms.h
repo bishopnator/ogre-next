@@ -462,7 +462,7 @@ namespace Ogre
 
         virtual void setupRootLayout( RootLayout &rootLayout, size_t tid ) = 0;
 
-        HighLevelGpuProgramPtr compileShaderCode( const String &source,
+        virtual HighLevelGpuProgramPtr compileShaderCode( const String &source,
                                                   const String &debugFilenameOutput, uint32 finalHash,
                                                   ShaderType shaderType, size_t tid );
 

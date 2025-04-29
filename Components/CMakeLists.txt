@@ -16,6 +16,10 @@ if (OGRE_BUILD_COMPONENT_ATMOSPHERE)
     add_subdirectory(Atmosphere)
 endif ()
 
+if (OGRE_BUILD_COMPONENT_HLMS_EXT)
+	add_subdirectory(Hlms/HlmsExt)
+endif ()
+
 if (OGRE_BUILD_COMPONENT_HLMS_PBS)
 	add_subdirectory(Hlms/Pbs)
 endif ()
