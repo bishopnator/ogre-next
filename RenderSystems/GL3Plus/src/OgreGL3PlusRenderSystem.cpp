@@ -1356,6 +1356,13 @@ namespace Ogre
             (uint8)std::max<size_t>( mLastUavBoundPlusOne, slotStart + set->mUavs.size() );
     }
 
+    void GL3PlusRenderSystem::_setUavPS( uint32 slotStart, const DescriptorSetUav *set )
+    {
+        // setting the buffers in pixel shader is actually identical to setting the buffers in compute
+        // shaders
+        _setUavCS( slotStart, set );
+    }
+
     void GL3PlusRenderSystem::_setVertexTexture( size_t unit, TextureGpu *tex )
     {
         _setTexture( unit, tex, false );

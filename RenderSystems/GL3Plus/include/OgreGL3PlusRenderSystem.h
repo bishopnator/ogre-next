@@ -354,6 +354,7 @@ namespace Ogre
 
     public:
         void _setUavCS( uint32 slotStart, const DescriptorSetUav *set ) override;
+        void _setUavPS( uint32 slotStart, const DescriptorSetUav *set ) override;
         /** See
             RenderSystem
         */

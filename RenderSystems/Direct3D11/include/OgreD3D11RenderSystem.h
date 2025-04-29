@@ -254,6 +254,7 @@ namespace Ogre
         void _setTexturesCS( uint32 slotStart, const DescriptorSetTexture2 *set ) override;
         void _setSamplersCS( uint32 slotStart, const DescriptorSetSampler *set ) override;
         void _setUavCS( uint32 slotStart, const DescriptorSetUav *set ) override;
+        void _setUavPS( uint32 slotStart, const DescriptorSetUav *set ) override;
         void _setBindingType( TextureUnitState::BindingType bindingType ) override;
         void _setVertexTexture( size_t unit, TextureGpu *tex ) override;
         void _setGeometryTexture( size_t unit, TextureGpu *tex ) override;

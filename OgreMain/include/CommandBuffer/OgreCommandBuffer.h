@@ -104,6 +104,7 @@ namespace Ogre
         static CommandBufferExecuteFunc execute_drawV1StripNoBaseInstance;
         static CommandBufferExecuteFunc execute_drawV1Strip;
         static CommandBufferExecuteFunc execute_lowLevelMaterial;
+        static CommandBufferExecuteFunc execute_setUavsPS;
         static CommandBufferExecuteFunc execute_invalidCommand;
 
         void clear();

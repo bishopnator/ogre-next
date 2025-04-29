@@ -893,6 +893,7 @@ namespace Ogre
         virtual void _setTexturesCS( uint32 slotStart, const DescriptorSetTexture2 *set ) = 0;
         virtual void _setSamplersCS( uint32 slotStart, const DescriptorSetSampler *set ) = 0;
         virtual void _setUavCS( uint32 slotStart, const DescriptorSetUav *set ) = 0;
+        virtual void _setUavPS( uint32 slotStart, const DescriptorSetUav *set ) = 0;
 
         /// Required when caller will soon start analyzing barriers (e.g. use BarrierSolver)
         /// Ogre will flush any pending resource transitions.

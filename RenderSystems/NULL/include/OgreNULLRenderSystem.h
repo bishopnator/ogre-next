@@ -114,6 +114,7 @@ namespace Ogre
         void _setTexturesCS( uint32 slotStart, const DescriptorSetTexture2 *set ) override;
         void _setSamplersCS( uint32 slotStart, const DescriptorSetSampler *set ) override;
         void _setUavCS( uint32 slotStart, const DescriptorSetUav *set ) override;
+        void _setUavPS( uint32 slotStart, const DescriptorSetUav *set ) override;
 
         void _setTextureCoordCalculation( size_t unit, TexCoordCalcMethod m,
                                           const Frustum *frustum = 0 ) override;

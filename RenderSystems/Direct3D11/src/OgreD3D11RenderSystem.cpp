@@ -1607,6 +1607,14 @@ namespace Ogre
             passDesc->performStoreActions( RenderPassDescriptor::All );
         }
 
+        // HACK !! overwrite the mMaxSrvCount as the implementations of
+        // D3D11xxxBufferPacked::bindBufferXX don't update the counts !!
+        mMaxSrvCount[VertexShader] = std::max( mMaxSrvCount[VertexShader], uint32_t( 8 ) );
+        mMaxSrvCount[PixelShader] = std::max( mMaxSrvCount[PixelShader], uint32_t( 8 ) );
+        mMaxSrvCount[HullShader] = std::max( mMaxSrvCount[HullShader], uint32_t( 8 ) );
+        mMaxSrvCount[DomainShader] = std::max( mMaxSrvCount[DomainShader], uint32_t( 8 ) );
+        mMaxSrvCount[GeometryShader] = std::max( mMaxSrvCount[GeometryShader], uint32_t( 8 ) );
+
         ID3D11DeviceContextN *context = mDevice.GetImmediateContext();
         // Set all textures to 0 to prevent the runtime from thinkin we might
         // be sampling from the render target (common when doing shadow map
@@ -2112,6 +2120,29 @@ namespace Ogre
                                             uavList[0].GetAddressOf(), 0 );
 
         mMaxBoundUavCS = std::max( mMaxBoundUavCS, uint32( slotStart + set->mUavs.size() ) );
+    }
+    //---------------------------------------------------------------------
+    void D3D11RenderSystem::_setUavPS( uint32 slotStart, const DescriptorSetUav *set )
+    {
+        if( mDevice.isError() )
+        {
+            int debug = 0;
+            debug = 1;
+        }
+
+        ComPtr<ID3D11UnorderedAccessView> *uavList =
+            reinterpret_cast<ComPtr<ID3D11UnorderedAccessView> *>( set->mRsData );
+        ID3D11DeviceContextN *context = mDevice.GetImmediateContext();
+        context->OMSetRenderTargetsAndUnorderedAccessViews(
+            D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, slotStart,
+            static_cast<UINT>( set->mUavs.size() ), uavList[0].GetAddressOf(), 0 );
+
+        if( mDevice.isError() )
+        {
+            String msg = mDevice.getErrorDescription( S_OK );
+            OGRE_EXCEPT_EX( Exception::ERR_RENDERINGAPI_ERROR, S_OK, "Cannot set UAV buffers: " + msg,
+                            "D3D11RenderSystem::_setUavPS" );
+        }
     }
     //---------------------------------------------------------------------
     void D3D11RenderSystem::_setBindingType( TextureUnitState::BindingType bindingType )
