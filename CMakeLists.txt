@@ -25,6 +25,10 @@ endif()
 #fix Policy CMP0072 is not set
 set(OpenGL_GL_PREFERENCE LEGACY)
 
+# configure vcpkg
+SET(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/Dependencies/vcpkg/scripts/buildsystems/vcpkg.cmake)
+SET(VCPKG_TARGET_TRIPLET x64-windows)
+
 # Use relative paths
 # This is mostly to reduce path size for command-line limits on windows
 if(WIN32)
