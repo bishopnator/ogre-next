@@ -1,5 +1,5 @@
 #pragma once
-#include "OgreHlmsExtExport.h"
+#include "OgreHlmsExtPrerequisites.h"
 
 // OGRE
 #include <OgreResourceTransition.h>
