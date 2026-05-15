@@ -427,6 +427,8 @@ ogre_find_component(Property OgreProperty.h "")
 ogre_find_component(Volume OgreVolumePrerequisites.h "")
 # look for Overlay component
 ogre_find_component(Overlay OgreOverlaySystem.h "")
+#look for HlmsExt component
+ogre_find_component(HlmsExt OgreHlmsExt.h Hlms/HlmsExt/)
 #look for HlmsPbs component
 ogre_find_component(HlmsPbs OgreHlmsPbs.h Hlms/Pbs/)
 #look for HlmsPbsMobile component

@@ -286,6 +286,7 @@ namespace Ogre
             viewport->_setupAspectRatio( mCullCamera );
         }
 
+        sceneManager->_setCurrentCompositorPass( this );
         analyzeBarriers();
         executeResourceTransitions();
         {
@@ -300,7 +301,6 @@ namespace Ogre
         sceneManager->_setPrePassMode( mDefinition->mPrePassMode, mPrePassTextures, mPrePassDepthTexture,
                                        mSsrTexture );
         sceneManager->_setRefractions( mDepthTextureNoMsaa, mRefractionsTexture );
-        sceneManager->_setCurrentCompositorPass( this );
 
         viewport->_updateCullPhase01( mCamera, mCullCamera, usedLodCamera, mDefinition->mFirstRQ,
                                       mDefinition->mLastRQ, mDefinition->mReuseCullData );
