@@ -87,27 +87,35 @@ namespace
 	};
 
 	//////////////////////////////////////////////////////////////////////////
+	/// RenderSystem_GL3Plus forces specific locations and specific names for the vertex shader inputs.
+	struct VertexElementSemanticInfo
+	{
+		uint32_t m_GlLocation = 0;
+		std::string m_GlName;
+	};
+
+	//////////////////////////////////////////////////////////////////////////
 	/// Remap VertexElementSemantic to the binding locations.
 	/// note: The mapped values are copied from GL3PlusVaoManager::getAttributeIndexFor to avoid linking against RenderSystem_GL3Plus module.
-	const std::unordered_map<std::string, uint32_t> cVertexElementSementicToLocation = {
-		{"DRAWID", 15}, // DRAWID
-		{"POSITION", 0}, // VES_POSITION
-		{"BLENDWEIGHT", 3}, // VES_BLEND_WEIGHTS
-		{"BLENDINDICES", 4}, // VES_BLEND_INDICES
-		{"NORMAL", 1}, // VES_NORMAL
-		{"COLOR", 5}, // VES_DIFFUSE
-		{"COLOR0", 5}, // VES_DIFFUSE (just an alias in HLSL if 2 colors are used)
-		{"COLOR1", 6}, // VES_SPECULAR
-		{"TEXCOORD0", 7}, // VES_TEXTURE_COORDINATES + 0
-		{"TEXCOORD1", 8}, // VES_TEXTURE_COORDINATES + 1
-		{"TEXCOORD2", 9}, // VES_TEXTURE_COORDINATES + 2
-		{"TEXCOORD3", 10}, // VES_TEXTURE_COORDINATES + 3
-		{"TEXCOORD4", 11}, // VES_TEXTURE_COORDINATES + 4
-		{"TEXCOORD5", 12}, // VES_TEXTURE_COORDINATES + 5
-		{"TEXCOORD6", 13}, // VES_TEXTURE_COORDINATES + 6
-		{"TEXCOORD7", 14}, // VES_TEXTURE_COORDINATES + 7
-		{"BINORMAL", 16}, // VES_BINORMAL
-		{"TANGENT", 2} // VES_TANGENT
+	const std::unordered_map<std::string, VertexElementSemanticInfo> cVertexElementSementicInfos = {
+		{ "DRAWID", { 15, "drawid" }}, // DRAWID
+		{ "POSITION", { 0, "vertex" } }, // VES_POSITION
+		{ "BLENDWEIGHT", { 3, "blendWeights" } }, // VES_BLEND_WEIGHTS
+		{"BLENDINDICES", { 4, "blendIndices" } }, // VES_BLEND_INDICES
+		{"NORMAL", { 1, "normal" } }, // VES_NORMAL
+		{"COLOR", { 5, "colour" } }, // VES_DIFFUSE
+		{"COLOR0", { 5, "colour" } }, // VES_DIFFUSE (just an alias in HLSL if 2 colors are used)
+		{"COLOR1", { 6, "secondary_colour" } }, // VES_SPECULAR
+		{"TEXCOORD0", { 7, "uv0" } }, // VES_TEXTURE_COORDINATES + 0
+		{"TEXCOORD1", { 8, "uv1" } }, // VES_TEXTURE_COORDINATES + 1
+		{"TEXCOORD2", { 9, "uv2" } }, // VES_TEXTURE_COORDINATES + 2
+		{"TEXCOORD3", { 10, "uv3" } }, // VES_TEXTURE_COORDINATES + 3
+		{"TEXCOORD4", { 11, "uv4" } }, // VES_TEXTURE_COORDINATES + 4
+		{"TEXCOORD5", { 12, "uv5" } }, // VES_TEXTURE_COORDINATES + 5
+		{"TEXCOORD6", { 13, "uv6" } }, // VES_TEXTURE_COORDINATES + 6
+		{"TEXCOORD7", { 14, "uc7" } }, // VES_TEXTURE_COORDINATES + 7
+		{"BINORMAL", { 16, "tangent" } }, // VES_BINORMAL
+		{"TANGENT", { 2, "binormal" } } // VES_TANGENT
 	};
 }
 
@@ -150,8 +158,8 @@ Ogre::String Ogre::convertHlsl2Glsl(const String& hlsl, const String& debugFilen
 		for (auto& resource : resources.stage_inputs)
 		{
 			const auto& semantic = pCompilerGLSL->get_decoration_string(resource.id, spv::DecorationHlslSemanticGOOGLE);
-			const auto found = cVertexElementSementicToLocation.find(semantic);
-			if (found == cVertexElementSementicToLocation.end())
+			const auto found = cVertexElementSementicInfos.find(semantic);
+			if (found == cVertexElementSementicInfos.end())
 			{
 				// Unknown semantic.
 				OGRE_EXCEPT(Exception::ERR_RENDERINGAPI_ERROR,
@@ -159,7 +167,8 @@ Ogre::String Ogre::convertHlsl2Glsl(const String& hlsl, const String& debugFilen
 					"Ogre::ConvertHlsl2Glsl");
 			}
 
-			pCompilerGLSL->set_decoration(resource.id, spv::DecorationLocation, found->second);
+			pCompilerGLSL->set_decoration(resource.id, spv::DecorationLocation, found->second.m_GlLocation);
+			pCompilerGLSL->set_name(resource.id, found->second.m_GlName);
 		}
 	}
 
