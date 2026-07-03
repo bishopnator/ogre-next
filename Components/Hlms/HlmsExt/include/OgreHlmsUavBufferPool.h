@@ -8,7 +8,7 @@
 // forwards
 namespace Ogre
 {
-	class HlmsExt;
+	struct DescriptorSetUav;
 }
 
 namespace Ogre
@@ -19,7 +19,7 @@ namespace Ogre
 	class _OgreHlmsExtExport HlmsUavBufferPool final : public HlmsBatchDataPoolInterface
 	{
 	public:
-		explicit HlmsUavBufferPool(HlmsExt& hlms, uint16_t writeSlot, uint16_t readSlot, size_t elementSize, size_t numElements, const ResourceAccessMap& resourceAccessMap);
+		explicit HlmsUavBufferPool(DescriptorSetUav& descriptorSetUav, uint16_t writeSlot, uint16_t readSlot, size_t elementSize, size_t numElements, const ResourceAccessMap& resourceAccessMap);
 		~HlmsUavBufferPool() override;
 
 		/// Add a slot by specifying its size in number of elements (in contrast to parent HlmsBatchDataPoolInterface::addSlot which expects size in bytes).

@@ -1,19 +1,17 @@
 #include "OgreHlmsUavBufferHandler.h"
 #include "OgreHlmsBufferHandlerCommon.h"
-#include "OgreHlmsExt.h"
 
 // OGRE
+#include <OgreDescriptorSetUav.h>
 #include <OgreSceneManager.h>
-#include <CommandBuffer/OgreCbSetUavs.h>
-#include <CommandBuffer/OgreCommandBuffer.h>
 #include <Vao/OgreUavBufferPacked.h>
 #include <vao/OgreVaoManager.h>
 
 using namespace Ogre;
 
 //////////////////////////////////////////////////////////////////////////
-HlmsUavBufferHandler::HlmsUavBufferHandler(HlmsExt& hlms, uint16_t writeSlot, uint16_t readSlot, size_t elementSize, const ResourceAccessMap& resourceAccessMap)
-: mHlms(hlms)
+HlmsUavBufferHandler::HlmsUavBufferHandler(DescriptorSetUav& descriptorSetUav, uint16_t writeSlot, uint16_t readSlot, size_t elementSize, const ResourceAccessMap& resourceAccessMap)
+: mDescriptorSetUav(descriptorSetUav)
 , mElementSize(static_cast<uint32_t>(elementSize))
 , mResourceAccessMap(resourceAccessMap)
 , mCurrentResourceAccess(ResourceAccess::Undefined)
@@ -79,7 +77,16 @@ void HlmsUavBufferHandler::bindBuffer(CommandBuffer& commandBuffer, uint8_t /*st
 {
 	if (mCurrentResourceAccess == ResourceAccess::Write)
 	{
-		*commandBuffer.addCommand<CbSetUavs>() = CbSetUavs(1, mHlms.updateDescriptorUavSet(mWriteSlot - 1, static_cast<UavBufferPacked&>(buffer), bindOffset, 0));
+		// Binding is done in HlmsExt::onHlmsTypeChanged which calls bindBuffer. It is necessary to collect all UAVs and bind all of them together at once.
+		if (mWriteSlot >= mDescriptorSetUav.mUavs.size())
+			mDescriptorSetUav.mUavs.resize(mWriteSlot + 1);
+
+		mDescriptorSetUav.mUavs[mWriteSlot].slotType = DescriptorSetUav::SlotTypeBuffer;
+		mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().makeEmpty();
+		mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().buffer = static_cast<UavBufferPacked*>(&buffer);
+		mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().offset = bindOffset;
+		mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().sizeBytes = 0; // Whole buffer.
+		mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().access = ResourceAccess::Write;
 	}
 	else
 	{

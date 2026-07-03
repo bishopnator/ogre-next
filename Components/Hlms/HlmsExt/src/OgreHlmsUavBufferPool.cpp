@@ -4,8 +4,8 @@
 using namespace Ogre;
 
 //////////////////////////////////////////////////////////////////////////
-HlmsUavBufferPool::HlmsUavBufferPool(HlmsExt& hlms, uint16_t writeSlot, uint16_t readSlot, size_t elementSize, size_t numElements, const ResourceAccessMap& resourceAccessMap)
-: HlmsBatchDataPoolInterface(elementSize * numElements, std::make_unique<HlmsUavBufferHandler>(hlms, writeSlot, readSlot, elementSize, resourceAccessMap))
+HlmsUavBufferPool::HlmsUavBufferPool(DescriptorSetUav& descriptorSetUav, uint16_t writeSlot, uint16_t readSlot, size_t elementSize, size_t numElements, const ResourceAccessMap& resourceAccessMap)
+: HlmsBatchDataPoolInterface(elementSize * numElements, std::make_unique<HlmsUavBufferHandler>(descriptorSetUav, writeSlot, readSlot, elementSize, resourceAccessMap))
 {
 }
 

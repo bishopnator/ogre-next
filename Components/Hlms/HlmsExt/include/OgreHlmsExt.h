@@ -26,6 +26,7 @@ namespace Ogre
 	/// To make full implementation of Hlms using this class, it is necessary to implement the following virtual methods:
 	/// * setupDescBindingRange
 	/// * preparePassHash
+	/// * registerRenderableTextures
 	/// * fillBuffersForV1
 	/// * fillBuffersForV2
 	/// * createDatablockImpl
@@ -39,6 +40,8 @@ namespace Ogre
 	/// The buffers are filled, but not bound - there is no access to the CommandBuffer and hence the mapBuffer is called with nullptr.
 	/// This implies that only const buffers are possible to use for the pass data.
 	/// 
+	/// The registerRenderableTextures is for notifying the Ogre about texture bindings based on the properties. The implementation must be in sync with binding textures within fillBuffersForV1/fillBuffersForV2 implementation.
+	/// 
 	/// The setupDescBindingRange reflects the bindings setup in the constructor.
 	/// 
 	/// The fillBuffersForV1/fillBuffersForV2 fills the per instance data in the buffers.
@@ -50,6 +53,20 @@ namespace Ogre
 	{
 	public:
 		using ResourceAccessMap = unordered_map<uint32_t, ResourceAccess::ResourceAccess>::type;
+
+		struct TextureBinding
+		{
+			ShaderType mShaderType = PixelShader; ///< Shader type where the texture will be bound.
+			IdString mName; ///< Name of the texture variable within the shader.
+			TextureGpu* mTexture = nullptr; ///< Texture itself to bind.
+			const HlmsSamplerblock* mSamplerBlock = nullptr; ///< Texture sample to bind.
+
+			bool operator==(const TextureBinding& textureBinding) const
+			{
+				return mShaderType == textureBinding.mShaderType && mName == textureBinding.mName && mTexture == textureBinding.mTexture && mSamplerBlock == textureBinding.mSamplerBlock;
+			}
+		};
+		using TextureBindings = vector<TextureBinding>::type;
 
 	public:
 		HlmsExt(HlmsTypes type, const String& typeName, Archive* dataFolder, ArchiveVec* pLibraryFolders);
@@ -83,14 +100,12 @@ namespace Ogre
 		HlmsBufferPool& createBufferPool(const std::initializer_list<ShaderType>& stages, uint16_t slot, size_t bufferSize, HlmsBufferHandlerPtr pBufferHandler);
 
 		/// Create a UAV pool with the requested bindings.
-		/// @param writeSlot		Slot index to which the buffers will be bound in the write mode (u0, u1, u2, ...).
+		/// @param writeSlot		Slot index to which the buffers will be bound in the write mode (u0, u1, u2, ..., but it is relative number to number of currently bound color buffers --> 0 means just after last color buffer).
 		/// @param readSlot			Slot index to which the buffers will be bound in the read mode (t0, t1, t2, ...).
 		/// @param elementSize		Size of the element stored in a buffer.
 		/// @param numElements		Number of elements which will fit by default in the buffer.
 		/// @param resourceAccessMap Defines the access of the UAVs per compositor pass identified by its identifier. @see CompositorPassDef::mIdentifier.
 		HlmsUavBufferPool& createUavBufferPool(uint16_t writeSlot, uint16_t readSlot, size_t elementSize, size_t numElements, const ResourceAccessMap& resourceAccessMap);
-		/// Update descriptor of active uavs and return a pointer to it.
-		const DescriptorSetUav* updateDescriptorUavSet(uint16_t slot, UavBufferPacked& buffer, size_t bindOffset, size_t sizeBytes);
 
 		/// Create a buffer pool for data batching. The buffers are not automatically bound to the shaders like HlmsBufferPool, but rather the implementation of HlmsExt
 		/// is responsible to bind it correctly. The pool provides the support for storing data which are registered under BatchDataSlotId. If e.g. the data are extracted from
@@ -146,6 +161,31 @@ namespace Ogre
 		/// Called from public fillBuffersForV2 to fill the buffers for the queued renderable.
 		virtual uint32 fillBuffersForV2(const HlmsCache* pCache, const QueuedRenderable& queuedRenderable, bool casterPass, CommandBuffer* pCommandBuffer) = 0;
 
+		/// Add a pass texture. The pass textures are global textures used by all renderables withing the currently rendered pass. It should be called from onPreparePassHash.
+		/// It sets the property with the value which corresponds to the binding slot. It is possible to declare then the binding in the templates as t@value(name).
+		void addPassTexture(ShaderType shaderType, const IdString& name, TextureGpu& texture, const HlmsSamplerblock& samplerBlock);
+
+		/// The renderable textures must be added from 2 calls which must be in sync.
+		/// * Calling addRenderableTexture(shaderType, name) from the calculateHashForPreCreate/calculateHashForPreCaster which registers the texture with proper slot and set the property with the value which corresponds to the binding slot.
+		/// * Calling addRenderableTexture(shaderType, name, texture, sampler, pCommandBuffer) from the fillBuffersForV1/fillBuffersForV2 which issues the binding command.
+		/// 
+		/// If the above calls are not in sync, the CbTexture command will be called with wrong slot opposed to the value stored in the property.
+		void addRenderableTexture(ShaderType shaderType, const IdString& name);
+		void addRenderableTexture(ShaderType shaderType, const IdString& name, TextureGpu& texture, const HlmsSamplerblock& samplerBlock, CommandBuffer* pCommandBuffer);
+
+		/// Invalidate texture binding at given slot. This must be called if direct texture binding through mRenderSystem is called e.g. from fillBuffersFor.
+		void invalidateTextureBinding(uint16_t slot);
+
+	private:
+		/// Check whether the binding is needed. If the requested texture is not currently bound at the specified slot, binds it and updates the mActiveTextures.
+		void bindTexture(uint16_t slot, const TextureBinding& textureBinding, CommandBuffer* pCommandBuffer);
+
+		/// Bind the pass textures if needed.
+		void bindPassTextures(CommandBuffer* pCommandBuffer);
+
+		/// Bind UAV buffers.
+		void bindUavBuffers(CommandBuffer* pCommandBuffer);
+
 	protected:
         float mConstantBiasScale;
 
@@ -157,13 +197,25 @@ namespace Ogre
 		/// Buffer pools used by shaders to store additional data to render the objects.
 		vector<HlmsBufferPoolInterface*>::type mBufferPools;
 
-		size_t mReadOnlyBufferPoolsCount; ///< cached due to HlmsListener::hlmsTypeChanged
-
 		/// Header files which can be included in the shaders using @insertpiece
 		PiecesMap mHeaderFiles;
 
 		/// Set of bound UAVs. This tracks the bindings initiated through pools created by createUavBufferPool.
 		DescriptorSetUav mDescriptorSetUav;
+
+		/// Reserved the texture buffer slots. This is updated when a texbuffer or read-only buffer is created. Usually done in the constructor of the inherited class from HlmsExt.
+		/// It includes also read-only buffers and uav buffers which are bound to the same binding slots.
+		uint8_t mReservedTexBufferSlots;
+		
+		/// Counter for the textures used by renderables.
+		uint8_t mRenderableTexturesCounter;
+
+		/// Track the bound textures to avoid useless binding of a texture which is already bound.
+		TextureBindings mActiveTextures;
+
+		/// Pass textures. The binding begins at mReservedTexBufferSlots.
+		TextureBindings mPassTextures;
+		bool mPassTexturesDirty; ///< True if the pass textures are changed and must be rebound.
 	};
 
 	/// Helper function to initialize DescBindingRange directly as it doesn't have a constructor accepting (start, end) and
@@ -185,6 +237,9 @@ namespace Ogre
 	{
 		return *reinterpret_cast<float*>(&value);
 	}
+
+	/// Get root HLMS folder from the configuration file.
+	_OgreHlmsExtExport String getHlmsRootFolder(const String& resourcePath, const String& configFileName = "resources2.cfg", const String& key = "DoNotUseAsResource", const String& section = "Hlms");
 
 	/// Helper template to implement registration of the HLMS.
 	/// The code is copied from GraphicsSystem::registerHlms().

@@ -5,7 +5,7 @@
 // forwards
 namespace Ogre
 {
-	class HlmsExt;
+	struct DescriptorSetUav;
 }
 
 namespace Ogre
@@ -17,7 +17,7 @@ namespace Ogre
 	class _OgreHlmsExtExport HlmsUavBufferHandler : public HlmsBufferHandler
 	{
 	public:
-		explicit HlmsUavBufferHandler(HlmsExt& hlms, uint16_t writeSlot, uint16_t readSlot, size_t elementSize, const ResourceAccessMap& resourceAccessMap);
+		explicit HlmsUavBufferHandler(DescriptorSetUav& descriptorSetUav, uint16_t writeSlot, uint16_t readSlot, size_t elementSize, const ResourceAccessMap& resourceAccessMap);
 		~HlmsUavBufferHandler() override;
 
 		/// Get element size.
@@ -32,14 +32,14 @@ namespace Ogre
 		void bindBuffer(CommandBuffer& commandBuffer, uint8_t stages, uint16_t slot, BufferPacked& buffer, size_t bindOffset) override;
 
 	private:
-		HlmsExt& mHlms;
+		DescriptorSetUav& mDescriptorSetUav;
 		const uint32_t mElementSize; ///< Size of the element stored in the buffer in bytes.
 		const ResourceAccessMap mResourceAccessMap;
 
 		ResourceAccess::ResourceAccess mCurrentResourceAccess;
 
 		/// Shader slot bindings.
-		const uint16_t mWriteSlot; ///< u0, u0, u2, ...
-		const uint16_t mReadSlot; ///< t0, t0, t2, ...
+		const uint16_t mWriteSlot; ///< u0, u1, u2, ...
+		const uint16_t mReadSlot; ///< t0, t1, t2, ...
 	};
 } // namespace Ogre

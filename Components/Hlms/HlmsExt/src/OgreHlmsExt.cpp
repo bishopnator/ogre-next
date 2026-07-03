@@ -8,6 +8,7 @@
 
 // OGRE
 #include <OgreCamera.h>
+#include <OgreConfigFile.h>
 #include <OgreFileSystem.h>
 #include <OgreHlmsDatablock.h>
 #include <OgreHlmsListener.h>
@@ -17,6 +18,9 @@
 #include <OgreRenderQueue.h>
 #include <OgreRoot.h>
 #include <OgreSceneManager.h>
+#include <CommandBuffer/OgreCbSetUavs.h>
+#include <CommandBuffer/OgreCbTexture.h>
+#include <CommandBuffer/OgreCommandBuffer.h>
 
 // std
 #include <fstream>
@@ -33,7 +37,8 @@ using namespace Ogre;
 //////////////////////////////////////////////////////////////////////////
 HlmsExt::HlmsExt(HlmsTypes type, const String& typeName, Archive* pDataFolder, ArchiveVec* pLibraryFolders)
 : Hlms(type, typeName, pDataFolder, pLibraryFolders)
-, mReadOnlyBufferPoolsCount(0)
+, mReservedTexBufferSlots(0)
+, mRenderableTexturesCounter(0)
 , mConstantBiasScale(0.1f)
 {
 	// Add folders also to resource manager so the #include directives in the shaders works properly.
@@ -65,6 +70,9 @@ HlmsExt::HlmsExt(HlmsTypes type, const String& typeName, Archive* pDataFolder, A
 			}
 		}
 	}
+
+	/// Prepare the texture bindings.
+	mActiveTextures = TextureBindings(16);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -122,8 +130,8 @@ HlmsBufferPool& HlmsExt::createBufferPool(const std::initializer_list<ShaderType
 	if (_stages == 0)
 		OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS, "No shader stage specified!", "HlmsExt::createBufferPool");
 
-	if (dynamic_cast<const HlmsReadOnlyBufferHandler*>(pBufferHandler.get()) != nullptr)
-		++mReadOnlyBufferPoolsCount;
+	if (dynamic_cast<const HlmsReadOnlyBufferHandler*>(pBufferHandler.get()) != nullptr && mReservedTexBufferSlots < slot)
+		mReservedTexBufferSlots = slot + 1;
 
 	const auto bufferPoolMapMode = dynamic_cast<const HlmsConstBufferHandler*>(pBufferHandler.get()) != nullptr ? HlmsBufferPool::MapMode::eBulk : HlmsBufferPool::MapMode::eSubRange;
 	mBufferPools.push_back(OGRE_NEW HlmsBufferPool(bufferPoolMapMode, bufferSize, std::move(pBufferHandler)));
@@ -134,23 +142,11 @@ HlmsBufferPool& HlmsExt::createBufferPool(const std::initializer_list<ShaderType
 //////////////////////////////////////////////////////////////////////////
 HlmsUavBufferPool& HlmsExt::createUavBufferPool(uint16_t writeSlot, uint16_t readSlot, size_t elementSize, size_t numElements, const ResourceAccessMap& resourceAccessMap)
 {
-	mBufferPools.push_back(OGRE_NEW HlmsUavBufferPool(*this, writeSlot, readSlot, elementSize, numElements, resourceAccessMap));
+	mBufferPools.push_back(OGRE_NEW HlmsUavBufferPool(mDescriptorSetUav, writeSlot, readSlot, elementSize, numElements, resourceAccessMap));
+	if (mReservedTexBufferSlots < readSlot)
+		mReservedTexBufferSlots = readSlot + 1;
+
 	return static_cast<HlmsUavBufferPool&>(*mBufferPools.back());
-}
-
-//////////////////////////////////////////////////////////////////////////
-const DescriptorSetUav* HlmsExt::updateDescriptorUavSet(uint16_t slot, UavBufferPacked& buffer, size_t bindOffset, size_t sizeBytes)
-{
-	if (slot >= mDescriptorSetUav.mUavs.size())
-		mDescriptorSetUav.mUavs.resize(slot + 1);
-
-	mDescriptorSetUav.mUavs[slot].slotType = DescriptorSetUav::SlotTypeBuffer;
-	mDescriptorSetUav.mUavs[slot].getBuffer().makeEmpty();
-	mDescriptorSetUav.mUavs[slot].getBuffer().buffer = &buffer;
-	mDescriptorSetUav.mUavs[slot].getBuffer().offset = bindOffset;
-	mDescriptorSetUav.mUavs[slot].getBuffer().sizeBytes = sizeBytes;
-	mDescriptorSetUav.mUavs[slot].getBuffer().access = ResourceAccess::Write;
-	return mHlmsManager->getDescriptorSetUav(mDescriptorSetUav);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -163,8 +159,8 @@ HlmsBatchDataPool& HlmsExt::createBatchDataPool(const std::initializer_list<Shad
 	if (_stages == 0)
 		OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS, "No shader stage specified!", "HlmsExt::createBatchDataPool");
 
-	if (dynamic_cast<const HlmsReadOnlyBufferHandler*>(pBufferHandler.get()) != nullptr)
-		++mReadOnlyBufferPoolsCount;
+	if (dynamic_cast<const HlmsReadOnlyBufferHandler*>(pBufferHandler.get()) != nullptr && mReservedTexBufferSlots < slot)
+		mReservedTexBufferSlots = slot + 1;
 
 	mBufferPools.push_back(OGRE_NEW HlmsBatchDataPool(bufferSize, std::move(pBufferHandler)));
 	mBufferPools.back()->setBinding(_stages, slot);
@@ -220,6 +216,8 @@ void HlmsExt::calculateHashForPreCreate(Renderable* pRenderable, PiecesMap* pInO
 	// inject header files
 	for (int k = 0; k < NumShaderTypes; ++k)
 		pInOutPieces[k].insert(mHeaderFiles.begin(), mHeaderFiles.end());
+
+	mRenderableTexturesCounter = 0;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -230,6 +228,8 @@ void HlmsExt::calculateHashForPreCaster(Renderable* pRenderable, PiecesMap* pInO
 	// inject header files
 	for( int k = 0; k < NumShaderTypes; ++k )
 		pInOutPieces[k].insert(mHeaderFiles.begin(), mHeaderFiles.end());
+
+	mRenderableTexturesCounter = 0;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -239,8 +239,27 @@ HlmsCache HlmsExt::preparePassHash(const CompositorShadowNode* pShadowNode, bool
 	mConstantBiasScale = cameras.renderingCamera != nullptr ? cameras.renderingCamera->_getConstantBiasScale() : 0.1f;
 
 	mT[kNoTid].setProperties.clear();
+	const auto prevPassTextures = mPassTextures;
+	mPassTextures.clear();
 	onPreparePassHash(pShadowNode, casterPass, dualParaboloid, pSceneManager);
 	HlmsCache hlmsCache = Hlms::preparePassHashBase(pShadowNode, casterPass, dualParaboloid, pSceneManager);
+
+	// Note: The setting of the HlmsBaseProp::ForwardPlusFlipY is copied from Hlms::preparePassHashBase but there it is
+	// checked only mShaderFileExt whether it is set to ".glsl". In our case the shader template files can be written in
+	// HLSL and then converted to GLSL.
+	if (mShaderFileExt == ".hlsl" && mShaderProfile == "glsl")
+	{
+		// Actually the problem is not texture flipping, but origin. In D3D11,
+		// we need to always flip because origin is different, but it's consistent
+		// between texture and render window. In GL, RenderWindows don't need
+		// to flip, but textures do.
+		const RenderPassDescriptor* renderPassDesc = mRenderSystem->getCurrentPassDescriptor();
+		setProperty(kNoTid, HlmsBaseProp::ForwardPlusFlipY, renderPassDesc->requiresTextureFlipping());
+	}
+
+	// Check if the pass textures must be rebound.
+	if (!mPassTexturesDirty && mPassTextures != prevPassTextures)
+		mPassTexturesDirty = true;
 
 	// Upload all dirty datablocks to the buffers.
 	mMaterialBufferPool.updateBuffers();
@@ -265,6 +284,7 @@ uint32 HlmsExt::fillBuffersForV1(const HlmsCache* pCache, const QueuedRenderable
 		const size_t texUnit = onHlmsTypeChanged(casterPass, pCommandBuffer, queuedRenderable);
 		mListener->hlmsTypeChanged(casterPass, pCommandBuffer, queuedRenderable.renderable->getDatablock(), texUnit);
 	}
+	bindPassTextures(pCommandBuffer);
 
 	// Don't bind the material buffer on caster passes (important to keep MDI & auto-instancing running on shadow map passes).
 	auto* pDatablock = queuedRenderable.renderable->getDatablock();
@@ -275,6 +295,7 @@ uint32 HlmsExt::fillBuffersForV1(const HlmsCache* pCache, const QueuedRenderable
 			mMaterialBufferPool.bindBuffers(*pBufferPoolUser->getAssignedPool(), *pCommandBuffer);
 	}
 
+	mRenderableTexturesCounter = 0;
 	return fillBuffersForV1(pCache, queuedRenderable, casterPass, pCommandBuffer);
 }
 
@@ -286,6 +307,7 @@ uint32 HlmsExt::fillBuffersForV2(const HlmsCache* pCache, const QueuedRenderable
 		const size_t texUnit = onHlmsTypeChanged(casterPass, pCommandBuffer, queuedRenderable);
 		mListener->hlmsTypeChanged(casterPass, pCommandBuffer, queuedRenderable.renderable->getDatablock(), texUnit);
 	}
+	bindPassTextures(pCommandBuffer);
 
 	// Don't bind the material buffer on caster passes (important to keep MDI & auto-instancing running on shadow map passes).
 	auto* pDatablock = queuedRenderable.renderable->getDatablock();
@@ -296,6 +318,7 @@ uint32 HlmsExt::fillBuffersForV2(const HlmsCache* pCache, const QueuedRenderable
 			mMaterialBufferPool.bindBuffers(*pBufferPoolUser->getAssignedPool(), *pCommandBuffer);
 	}
 
+	mRenderableTexturesCounter = 0;
 	return fillBuffersForV2(pCache, queuedRenderable, casterPass, pCommandBuffer);
 }
 
@@ -413,13 +436,103 @@ void HlmsExt::onPreparePassHash(const CompositorShadowNode* /*pShadowNode*/, boo
 //////////////////////////////////////////////////////////////////////////
 size_t HlmsExt::onHlmsTypeChanged(bool /*casterPass*/, CommandBuffer* pCommandBuffer, const QueuedRenderable& /*queuedRenderable*/)
 {
+	// The descriptor is updated in HlmsUavBufferHandler::bindBuffer if the UAV is required to bind for writing.
+	mDescriptorSetUav.mUavs.clear();
+
+	// Bind the buffers.
 	for (HlmsBufferPoolInterface* pBufferPoolInterface : mBufferPools)
 	{
 		if (auto* pBufferPool = dynamic_cast<HlmsBufferPool*>(pBufferPoolInterface); pBufferPool != nullptr)
 			pBufferPool->bindBuffer(pCommandBuffer);
 	}
 
+	// Bind the UAVs.
+	bindUavBuffers(pCommandBuffer);
+
 	mMaterialBufferPool.onHlmsTypeChanged();
 
-	return mReadOnlyBufferPoolsCount;
+	// Reset the texture bindings.
+	mActiveTextures = TextureBindings(16);
+
+	// Bind the pass textures.
+	mPassTexturesDirty = true;
+
+	return static_cast<size_t>(mReservedTexBufferSlots) + mPassTextures.size();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void HlmsExt::addPassTexture(ShaderType shaderType, const IdString& name, TextureGpu& texture, const HlmsSamplerblock& samplerBlock)
+{
+	const auto slot = static_cast<int32>(mReservedTexBufferSlots) + static_cast<int32>(mPassTextures.size());
+	mPassTextures.push_back(TextureBinding{shaderType, name, &texture, &samplerBlock});
+	setProperty(kNoTid, name, slot);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void HlmsExt::addRenderableTexture(ShaderType /*shaderType*/, const IdString& name)
+{
+	const auto slot = static_cast<int32>(mReservedTexBufferSlots) + static_cast<int32>(mPassTextures.size()) + static_cast<int32>(mRenderableTexturesCounter);
+	++mRenderableTexturesCounter;
+	setProperty(kNoTid, name, slot);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void HlmsExt::addRenderableTexture(ShaderType shaderType, const IdString& name, TextureGpu& texture, const HlmsSamplerblock& samplerBlock, CommandBuffer* pCommandBuffer)
+{
+	const auto slot = static_cast<int32>(mReservedTexBufferSlots) + static_cast<int32>(mPassTextures.size()) + static_cast<int32>(mRenderableTexturesCounter);
+	++mRenderableTexturesCounter;
+	bindTexture(slot, TextureBinding{shaderType, name, &texture, &samplerBlock}, pCommandBuffer);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void HlmsExt::invalidateTextureBinding(uint16_t slot)
+{
+	mActiveTextures[slot] = TextureBinding{};
+}
+
+//////////////////////////////////////////////////////////////////////////
+void HlmsExt::bindTexture(uint16_t slot, const TextureBinding& textureBinding, CommandBuffer* pCommandBuffer)
+{
+	if (mActiveTextures[slot] == textureBinding)
+		return;
+
+	mActiveTextures[slot] = textureBinding;
+	*pCommandBuffer->addCommand<CbTexture>() = CbTexture(slot, textureBinding.mTexture, textureBinding.mSamplerBlock);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void HlmsExt::bindPassTextures(CommandBuffer* pCommandBuffer)
+{
+	if (!mPassTexturesDirty)
+		return;
+
+	for (size_t k = 0; k < mPassTextures.size(); ++k)
+	{
+		const auto slot = static_cast<uint16_t>(mReservedTexBufferSlots) + static_cast<uint16_t>(k);
+		bindTexture(slot, mPassTextures[k], pCommandBuffer);
+	}
+
+	mPassTexturesDirty = false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void HlmsExt::bindUavBuffers(CommandBuffer* pCommandBuffer)
+{
+	const auto numColorAttachments = mRenderSystem->getCurrentPassDescriptor()->getNumColourEntries();
+	const auto* pDescriptorSetUav = !mDescriptorSetUav.mUavs.empty() ? mHlmsManager->getDescriptorSetUav(mDescriptorSetUav) : nullptr;
+	*pCommandBuffer->addCommand<CbSetUavs>() = CbSetUavs(numColorAttachments, pDescriptorSetUav);
+}
+
+//////////////////////////////////////////////////////////////////////////
+String Ogre::getHlmsRootFolder(const String& resourcePath, const String& configFileName, const String& key, const String& section)
+{
+	ConfigFile cf;
+	cf.load(resourcePath + configFileName);
+
+#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE || OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+	String rootHlmsFolder = macBundlePath() + '/' + cf.getSetting(key, section, "");
+#else
+	String rootHlmsFolder = resourcePath + cf.getSetting(key, section, "");
+#endif
+	return rootHlmsFolder;
 }

@@ -2124,18 +2124,17 @@ namespace Ogre
     //---------------------------------------------------------------------
     void D3D11RenderSystem::_setUavPS( uint32 slotStart, const DescriptorSetUav *set )
     {
-        if( mDevice.isError() )
-        {
-            int debug = 0;
-            debug = 1;
-        }
-
         ComPtr<ID3D11UnorderedAccessView> *uavList =
-            reinterpret_cast<ComPtr<ID3D11UnorderedAccessView> *>( set->mRsData );
+            set != nullptr ? reinterpret_cast<ComPtr<ID3D11UnorderedAccessView> *>( set->mRsData )
+                           : nullptr;
+        const UINT uavListSize = set != nullptr ? static_cast<UINT>( set->mUavs.size() ) : 0;
+        ID3D11UnorderedAccessView *const *pUavs =
+            uavList != nullptr ? uavList[0].GetAddressOf() : nullptr;
+
         ID3D11DeviceContextN *context = mDevice.GetImmediateContext();
-        context->OMSetRenderTargetsAndUnorderedAccessViews(
-            D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL, nullptr, nullptr, slotStart,
-            static_cast<UINT>( set->mUavs.size() ), uavList[0].GetAddressOf(), 0 );
+        context->OMSetRenderTargetsAndUnorderedAccessViews( D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL,
+                                                            nullptr, nullptr, slotStart, uavListSize,
+                                                            pUavs, 0 );
 
         if( mDevice.isError() )
         {
