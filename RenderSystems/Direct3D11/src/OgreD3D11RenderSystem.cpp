@@ -2426,7 +2426,7 @@ namespace Ogre
         rasterDesc.DepthClipEnable = !newBlock->mDepthClamp;
         rasterDesc.ScissorEnable = newBlock->mScissorTestEnabled;
 
-        rasterDesc.MultisampleEnable = true;
+        rasterDesc.MultisampleEnable = mPrimaryWindow != nullptr && mPrimaryWindow->isMultisample();
         rasterDesc.AntialiasedLineEnable = false;
 
         ID3D11RasterizerState *rasterizerState = 0;
