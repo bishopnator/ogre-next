@@ -73,23 +73,39 @@ size_t HlmsUavBufferHandler::getMaxBufferSize(VaoManager& vaoManager) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-void HlmsUavBufferHandler::bindBuffer(CommandBuffer& commandBuffer, uint8_t /*stages*/, uint16_t /*slot*/, BufferPacked& buffer, size_t bindOffset)
+void HlmsUavBufferHandler::bindBuffer(CommandBuffer& commandBuffer, uint8_t stages, uint16_t slot, BufferPacked& buffer, size_t bindOffset)
 {
 	if (mCurrentResourceAccess == ResourceAccess::Write)
 	{
-		// Binding is done in HlmsExt::onHlmsTypeChanged which calls bindBuffer. It is necessary to collect all UAVs and bind all of them together at once.
+		// Prepare the slot.
+		DescriptorSetUav::Slot uavSlot;
+		uavSlot.slotType = DescriptorSetUav::SlotTypeBuffer;
+		uavSlot.getBuffer().makeEmpty();
+		uavSlot.getBuffer().buffer = static_cast<UavBufferPacked*>(&buffer);
+		uavSlot.getBuffer().offset = bindOffset;
+		uavSlot.getBuffer().sizeBytes = 0; // Whole buffer.
+		uavSlot.getBuffer().access = ResourceAccess::Write;
+
+		// Binding is done in HlmsExt::bindUavBuffers. It is necessary to collect all UAVs and bind all of them together at once.
 		if (mWriteSlot >= mDescriptorSetUav.mUavs.size())
 			mDescriptorSetUav.mUavs.resize(mWriteSlot + 1);
 
-		mDescriptorSetUav.mUavs[mWriteSlot].slotType = DescriptorSetUav::SlotTypeBuffer;
-		mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().makeEmpty();
-		mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().buffer = static_cast<UavBufferPacked*>(&buffer);
-		mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().offset = bindOffset;
-		mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().sizeBytes = 0; // Whole buffer.
-		mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().access = ResourceAccess::Write;
+		// Check if it is necessary to bind the UAV.
+		if (mDescriptorSetUav.mUavs[mWriteSlot] != uavSlot)
+		{
+			mDescriptorSetUav.mUavs[mWriteSlot].slotType = DescriptorSetUav::SlotTypeBuffer;
+			mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().makeEmpty();
+			mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().buffer = static_cast<UavBufferPacked*>(&buffer);
+			mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().offset = bindOffset;
+			mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().sizeBytes = 0; // Whole buffer.
+			mDescriptorSetUav.mUavs[mWriteSlot].getBuffer().access = ResourceAccess::Write;
+
+			mDescriptorSetUav.mRefCount = 1; // Mark the UAVs that it is necessary to bind it.
+		}
 	}
 	else
 	{
-		Details::bindBuffer(commandBuffer, 1 << GeometryShader, mReadSlot, *static_cast<UavBufferPacked&>(buffer).getAsReadOnlyBufferView(), static_cast<uint32_t>(bindOffset));
+		assert(mReadSlot == slot);
+		Details::bindBuffer(commandBuffer, stages, slot, *static_cast<UavBufferPacked&>(buffer).getAsReadOnlyBufferView(), static_cast<uint32_t>(bindOffset));
 	}
 }

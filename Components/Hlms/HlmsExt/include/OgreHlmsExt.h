@@ -100,12 +100,13 @@ namespace Ogre
 		HlmsBufferPool& createBufferPool(const std::initializer_list<ShaderType>& stages, uint16_t slot, size_t bufferSize, HlmsBufferHandlerPtr pBufferHandler);
 
 		/// Create a UAV pool with the requested bindings.
+		/// @param stages			Combination of ShaderType values where the buffer will be bound for reading.
 		/// @param writeSlot		Slot index to which the buffers will be bound in the write mode (u0, u1, u2, ..., but it is relative number to number of currently bound color buffers --> 0 means just after last color buffer).
 		/// @param readSlot			Slot index to which the buffers will be bound in the read mode (t0, t1, t2, ...).
 		/// @param elementSize		Size of the element stored in a buffer.
 		/// @param numElements		Number of elements which will fit by default in the buffer.
 		/// @param resourceAccessMap Defines the access of the UAVs per compositor pass identified by its identifier. @see CompositorPassDef::mIdentifier.
-		HlmsUavBufferPool& createUavBufferPool(uint16_t writeSlot, uint16_t readSlot, size_t elementSize, size_t numElements, const ResourceAccessMap& resourceAccessMap);
+		HlmsUavBufferPool& createUavBufferPool(const std::initializer_list<ShaderType>& stages, uint16_t writeSlot, uint16_t readSlot, size_t elementSize, size_t numElements, const ResourceAccessMap& resourceAccessMap);
 
 		/// Create a buffer pool for data batching. The buffers are not automatically bound to the shaders like HlmsBufferPool, but rather the implementation of HlmsExt
 		/// is responsible to bind it correctly. The pool provides the support for storing data which are registered under BatchDataSlotId. If e.g. the data are extracted from
@@ -201,6 +202,8 @@ namespace Ogre
 		PiecesMap mHeaderFiles;
 
 		/// Set of bound UAVs. This tracks the bindings initiated through pools created by createUavBufferPool.
+		/// The mDescriptorSetUav.mRefCount indicates whether the UAVs are bound in CommandBuffer. This is the hack
+		/// to avoid addition of the new member.
 		DescriptorSetUav mDescriptorSetUav;
 
 		/// Reserved the texture buffer slots. This is updated when a texbuffer or read-only buffer is created. Usually done in the constructor of the inherited class from HlmsExt.

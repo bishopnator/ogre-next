@@ -140,9 +140,17 @@ HlmsBufferPool& HlmsExt::createBufferPool(const std::initializer_list<ShaderType
 }
 
 //////////////////////////////////////////////////////////////////////////
-HlmsUavBufferPool& HlmsExt::createUavBufferPool(uint16_t writeSlot, uint16_t readSlot, size_t elementSize, size_t numElements, const ResourceAccessMap& resourceAccessMap)
+HlmsUavBufferPool& HlmsExt::createUavBufferPool(const std::initializer_list<ShaderType>& stages, uint16_t writeSlot, uint16_t readSlot, size_t elementSize, size_t numElements, const ResourceAccessMap& resourceAccessMap)
 {
+	uint8_t _stages = 0;
+	for (const ShaderType& shaderType : stages)
+		_stages |= 1 << shaderType;
+
+	if (_stages == 0)
+		OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS, "No shader stage specified!", "HlmsExt::createUavBufferPool");
+
 	mBufferPools.push_back(OGRE_NEW HlmsUavBufferPool(mDescriptorSetUav, writeSlot, readSlot, elementSize, numElements, resourceAccessMap));
+	mBufferPools.back()->setBinding(_stages, readSlot);
 	if (mReservedTexBufferSlots < readSlot)
 		mReservedTexBufferSlots = readSlot + 1;
 
@@ -296,7 +304,13 @@ uint32 HlmsExt::fillBuffersForV1(const HlmsCache* pCache, const QueuedRenderable
 	}
 
 	mRenderableTexturesCounter = 0;
-	return fillBuffersForV1(pCache, queuedRenderable, casterPass, pCommandBuffer);
+	const uint32 baseInstance = fillBuffersForV1(pCache, queuedRenderable, casterPass, pCommandBuffer);
+
+	// If mDescriptorSetUav.mRefCount is not zero, it was marked as changed in HlmsUavBufferHandler::bindBuffer.
+	if (mDescriptorSetUav.mRefCount != 0)
+		bindUavBuffers(pCommandBuffer);
+
+	return baseInstance;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -319,7 +333,13 @@ uint32 HlmsExt::fillBuffersForV2(const HlmsCache* pCache, const QueuedRenderable
 	}
 
 	mRenderableTexturesCounter = 0;
-	return fillBuffersForV2(pCache, queuedRenderable, casterPass, pCommandBuffer);
+	const uint32 baseInstance = fillBuffersForV2(pCache, queuedRenderable, casterPass, pCommandBuffer);
+
+	// If mDescriptorSetUav.mRefCount is not zero, it was marked as changed in HlmsUavBufferHandler::bindBuffer.
+	if (mDescriptorSetUav.mRefCount != 0)
+		bindUavBuffers(pCommandBuffer);
+
+	return baseInstance;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -438,6 +458,7 @@ size_t HlmsExt::onHlmsTypeChanged(bool /*casterPass*/, CommandBuffer* pCommandBu
 {
 	// The descriptor is updated in HlmsUavBufferHandler::bindBuffer if the UAV is required to bind for writing.
 	mDescriptorSetUav.mUavs.clear();
+	mDescriptorSetUav.mRefCount = 0; // Indicates that the UAVs are not needed to bind.
 
 	// Bind the buffers.
 	for (HlmsBufferPoolInterface* pBufferPoolInterface : mBufferPools)
@@ -445,9 +466,6 @@ size_t HlmsExt::onHlmsTypeChanged(bool /*casterPass*/, CommandBuffer* pCommandBu
 		if (auto* pBufferPool = dynamic_cast<HlmsBufferPool*>(pBufferPoolInterface); pBufferPool != nullptr)
 			pBufferPool->bindBuffer(pCommandBuffer);
 	}
-
-	// Bind the UAVs.
-	bindUavBuffers(pCommandBuffer);
 
 	mMaterialBufferPool.onHlmsTypeChanged();
 
@@ -518,6 +536,13 @@ void HlmsExt::bindPassTextures(CommandBuffer* pCommandBuffer)
 //////////////////////////////////////////////////////////////////////////
 void HlmsExt::bindUavBuffers(CommandBuffer* pCommandBuffer)
 {
+	if (mDescriptorSetUav.mRefCount == 0)
+		return; // The UAVs are properly bound.
+
+	// Mark the UAVs as bound.
+	mDescriptorSetUav.mRefCount = 0;
+
+	// Bind the UAVs.
 	const auto numColorAttachments = mRenderSystem->getCurrentPassDescriptor()->getNumColourEntries();
 	const auto* pDescriptorSetUav = !mDescriptorSetUav.mUavs.empty() ? mHlmsManager->getDescriptorSetUav(mDescriptorSetUav) : nullptr;
 	*pCommandBuffer->addCommand<CbSetUavs>() = CbSetUavs(numColorAttachments, pDescriptorSetUav);
